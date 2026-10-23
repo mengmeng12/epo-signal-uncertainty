@@ -1,0 +1,18 @@
+{
+  "reference_paper": {
+    "file": "Pedersen_Babu_Levine_2021_Enhanced_Portfolio_Optimization.pdf",
+    "source": "https://research-api.cbs.dk/ws/portalfiles/portal/93542322/lasse_heje_pedersen_et_al_enhanced_portfolio_publishersversion.pdf",
+    "doi": "10.1080/0015198X.2020.1854543",
+    "license": "CC BY-NC-ND 4.0",
+    "pages": 30,
+    "retrieved_date": "2026-10-23",
+    "sha256": "b04bb1adac9cda64a6779e1f8577842eee1469b1636fdbbe7a539ddf01b6097e",
+    "modified": false
+  },
+  "revised_proposal": {
+    "file": "EPO_Revised_Proposal.docx",
+    "revision_date": "2026-10-23",
+    "sha256": "2b5b747474af346730b3ade55772eb5a632479ba57d691a64b83e218ce858dcb",
+    "verified_render_pages": 5
+  }
+}
