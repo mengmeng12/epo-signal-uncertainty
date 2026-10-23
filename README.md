@@ -2,8 +2,6 @@
 
 Signal uncertainty in Enhanced Portfolio Optimization.
 
-**Team:** Yuzhen Chen, Yadan Zhan, Shuchen Meng.
-
 We study when compressing heterogeneous signal uncertainty into one scalar preserves portfolio decisions. Simulations will identify the decision loss remaining with the best scalar; a matched industry-portfolio experiment will evaluate an implementable reliability proxy after estimation error and costs.
 
 ## Project status
