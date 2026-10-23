@@ -1,48 +1,173 @@
-# Project workflow 三人分工与交付表
+# Project workflow
 
-研究问题：什么时候一个 scalar 能保留决策相关的不确定性信息，什么时候即使最佳 scalar 仍有损失？模拟识别机制；实证检验可实施代理，不直接识别真实 Λ。
+Research question: when does one scalar preserve decision-relevant uncertainty information, and when does even the best scalar lose economic value? Simulations identify the mechanism; the empirical study evaluates an implementable uncertainty proxy.
 
-当前状态：**初始目录已建立；所有研究任务均待三人逐步完成。** `end_to_end_pipeline.ipynb` 保持空白，`src` 和 `data` 仅有 `.gitkeep`。下表的代码入口、子目录和输出文件都是计划，并非已经存在的实现或结果。
+The repository is a starting point. The notebook is blank, and `src`, `data`, and `output` contain only `.gitkeep` placeholders. All modules, subdirectories, and deliverables listed below are planned work. The revised proposal is the design authority.
 
-| Step | 负责人 / 复核人 | 应做什么 | 必须生成的结果 | 完成标准 | 依赖 |
-|---|---|---|---|---|---|
-| S00 Shared conventions | 三人共同 / 三人共同 | 确认proposal、Python环境、共享参数、数据时点和结果命名；决定是否曾查看2019–2025。 | 计划创建：`src/epo_project/config.py`、环境依赖文件、数据字典与holdout使用记录 | 共同w、γ=3、窗口/费用/样本期与proposal一致；形成书面共识。 | 无 |
-| S01 Prepare industry returns | Yuzhen Chen / Shuchen Meng | 下载49-industry月度收益和RF；清理缺失码与单位；记录vintage和hash；生成逐月可用行业。<br>入口：`data.prepare_returns` | `data/processed/returns.csv`<br>`data/processed/eligibility.csv`<br>`data/raw/source_manifest.json` | 同一日期行业唯一；收益为小数；缺失不补未来；warm-up规则可追溯。 | S00 |
-| S02 Build momentum and risk inputs | Yuzhen Chen / Yadan Zhan | 实现12月momentum、60月风险、固定5%预收缩；缓存时点与行业顺序。<br>入口：`data.build_inputs` | `data/interim/momentum.csv`<br>`data/interim/risk_models.npz`<br>`data/interim/risk_index.csv` | momentum两条腿+1/-1；每个Q正定且对角不变；训练截止日期不超过t。 | S01 |
-| S03 Validate one EPO benchmark | Yuzhen Chen / Shuchen Meng | 仅Equity 1；raw MVO、5% MVO、scalar EPO；年度过去60月SR选w；PC在t形成、t+1评价。<br>入口：`replication.run` | `data/results/replication_table.csv`<br>`data/results/problem_pc_diagnostics.csv`<br>`data/results/problem_pc.png` | 1942–2018在历史允许时评价；记录与论文实现差异；绝不宣称逐点复刻。 | S02 |
-| S04 Identify scalar compression loss | Yadan Zhan / Shuchen Meng | 实现已知Σ/Λ的Gaussian DGP、heterogeneous与最佳scalar；分开参数选择损失和L；alignment为条件描述。<br>入口：`simulation.run` | `data/results/simulation_draws.csv`<br>`data/results/compression_loss.csv`<br>`data/results/compression_loss.png` | h=1时L≈0；oracle不读取本次μ；数值搜索含边界/零仓位极限；1000配对draws/CV。 | S00 |
-| S05 Estimate forecasts and relative uncertainty | Shuchen Meng / Yuzhen Chen | 120对已完成观测OLS；共同日期12月block、200次refit；当前z下预测均值方差/资产方差，5/95截尾、floor、归一化。<br>入口：`reliability.run` | `data/interim/forecast_reliability.csv`<br>`data/results/reliability_diagnostics.csv` | h均值1且正；全零方差回退h=1；信号和h只能使用≤t信息；不加残差方差。 | S02 |
-| S06 Validate the uncertainty estimator | Yadan Zhan / Shuchen Meng | Yadan定义一个固定线性DGP；复用Shuchen同一估计器，检查均值误差、bootstrap方差和覆盖率。<br>入口：`simulation.validate_estimator` | `data/results/estimator_calibration.csv`<br>`data/results/estimator_calibration.png` | 所有DGP参数及seed留档；不是人为添加multiplicative noise替代估计器；市场收益方差不等于均值误差。 | S05 |
-| S07 Run the matched empirical portfolios | Shuchen Meng / Yuzhen Chen | 共同s/Q/γ=3；每年scalar过去60月净CE选共同w；heterogeneous只替换h；10bp成交+50bp年化空头费。<br>入口：`backtest.run` | `data/results/annual_selection.csv`<br>`data/results/weights.csv`<br>`data/results/matched_returns.csv` | 无rho搜索；同一w/行业/日期；主结果不独立vol target；冻结2019–2025设计；漂移调仓及资金账可复核。 | S05 |
-| S08 Evaluate economic value and uncertainty | Shuchen Meng / Yadan Zhan | 净ΔCE和1000次paired block bootstrap 95%CI；汇总SR、vol、95%ES、drawdown、turnover、gross。<br>入口：`evaluation.run` | `data/results/performance_table.csv`<br>`data/results/delta_ce_bootstrap.csv`<br>`data/results/equity_curves.png` | 主block=12月，6/24敏感性；配对重采样；不显著不等价；L与实证ΔCE分开解释。 | S07 |
-| S09 Check deployment sensitivity | Shuchen Meng / Yuzhen Chen | 复用主分析w；统一10%事前vol规则后gross≤3；报告cap频率；其他费用/因子/置换为可选后续。<br>入口：`evaluation.deployment_sensitivity` | `data/results/deployment_sensitivity.csv` | 不重新给heterogeneous调w；不把受约束结果套用无约束理论最优性。 | S07 |
-| S10 Assemble report evidence | All three / All three | Yuzhen写数据/复现；Yadan写理论/模拟；Shuchen写实证/结论；各自准备对应presentation。<br>入口：`reporting.run` | `data/results/result_manifest.json`<br>`data/results/report_summary.md` | 结果路径、参数、vintage、seed、Git commit可追溯；三人交叉复核；不将合成数据结果写成实证。 | S03, S04, S06, S08, S09 |
+Each step has one accountable owner. Other members can review or provide inputs without sharing responsibility for completing that step. Step numbers describe the workflow; independent steps can run in parallel.
 
-## 交接顺序
+## Step overview
 
-1. 三人先创建并确认共享配置、环境依赖、日期/单位/列名约定和 holdout 使用记录。建议将共享配置放在未来的 `src/epo_project/config.py`，数据说明放在未来的 `data/README.md`。配置改动需在报告中说明理由。
-2. Yuzhen 完成 S01–S02 后交付数据和风险接口；Yadan 可同时开展 S04，不需要等待市场数据。
-3. Shuchen 完成可复用的预测/不确定性估计器；Yadan 用该模块完成 S06。S06 的历史依赖表示接口交接，不表示模拟使用市场估计的真实均值。
-4. Yuzhen 完成 S03；Shuchen 完成 S07–S09。两人一起审计历史选择、漂移成交、现金融资和成本。
-5. 三人整合 S10：Yuzhen 负责数据与复现，Yadan 负责理论与模拟，Shuchen 负责可实施实证与结论。三人共同检查图表和文稿。
+| Step | Task | Owner | Depends on |
+|---|---|---|---|
+| 0 | Establish shared conventions | Yuzhen Chen | None |
+| 1 | Prepare industry returns | Yuzhen Chen | Step 0 |
+| 2 | Build momentum and risk inputs | Yuzhen Chen | Step 1 |
+| 3 | Validate the EPO benchmark | Yuzhen Chen | Step 2 |
+| 4 | Measure scalar compression loss | Yadan Zhan | Step 0 |
+| 5 | Estimate forecasts and relative uncertainty | Shuchen Meng | Step 2 |
+| 6 | Validate the uncertainty estimator | Yadan Zhan | Steps 4 and 5 |
+| 7 | Run matched empirical portfolios | Shuchen Meng | Step 5 |
+| 8 | Evaluate economic value and uncertainty | Shuchen Meng | Step 7 |
+| 9 | Check deployment sensitivity | Shuchen Meng | Step 7 |
+| 10 | Assemble the final report and presentation | Shuchen Meng | Steps 3, 6, 8, and 9 |
 
-## 分支与协作
+## Step 0 - Establish shared conventions
 
-- Yuzhen：`feature/data-and-replication`。
-- Yadan：`feature/theory-and-simulation`。
-- Shuchen：`feature/reliability-and-oos`。
-- 小步提交并开 PR；由表中的复核人检查后合并。后续填充共享 notebook 时只放调用与叙述，主要计算写入各自模块，减少冲突。
-- 改动应附测试命令、输出路径及数据版本。当前 `data` 除 `.gitkeep` 外默认不提交；三人开始开发时再明确原始数据、缓存和精选图表的版本管理规则。
-- 协作者由仓库所有者添加；本次不发送邀请。不预设未经三人确认的截止日期。
+**Owner:** Yuzhen Chen
 
-## 结果解释边界
+Confirm the revised proposal, Python environment, shared parameters, information timing, and artifact names with the team. Record whether the 2019-2025 sample has already informed any design choices. Define the common data interfaces before implementation.
 
-理论 L 的非负性来自给定模型和最优性；真实净 ΔCE 可能为负。共同 w 的实证比较只评估既定可实施规则，不证明战胜全部 scalar 规则。10% vol / gross 3 属于部署敏感性，主实证使用固定 γ。最终表格必须分别标注历史样本 1970–2018 和扩展样本 2019–2025；若后者参与设计，不能称 untouched holdout。
+**Deliverables:** `src/epo_project/config.py`, an environment dependency file, `data/README.md`, and `output/design_decisions.md`.
 
-## 开始开发前共同确认的数据约定
+**Completion criteria:** the common shrinkage parameter, risk aversion `gamma = 3`, windows, costs, and sample periods match the proposal. Returns use decimal units; each covariance matrix has an explicit date and industry order. Document any agreed design changes and the status of the proposed holdout.
 
-- 日期使用ISO月末；收益率用小数表示，明确simple return、RF与excess return，缺失码保持缺失。
-- formation date = t，持有期收益 = t+1；回归只使用 u+1≤t 的已完成配对。
-- covariance矩阵必须附日期及行业顺序；两种策略必须共享可用行业、信号、Q、w及费用规则。
-- 建议未来在 `data` 下建立 raw、interim、processed、results；目前不创建或填充这些子目录。
-- 每个结果记录输入版本、代码commit、参数、seed和生成日期。共享接口确定后，再编写实际数据schema和校验。
+## Step 1 - Prepare industry returns
+
+**Owner:** Yuzhen Chen
+
+Download the monthly value-weighted French 49 Industry Portfolios and risk-free series. Clean missing-value codes and units, preserve the source files, and determine which industries are eligible at each historical date.
+
+**Deliverables:** `data/processed/returns.csv`, `data/processed/eligibility.csv`, and `data/raw/source_manifest.json`.
+
+**Completion criteria:** each date-industry pair is unique; returns are decimals; missing observations are not filled using future information. Record source URLs, download dates, file hashes, and the histories required for eligibility.
+
+**Planned entry point:** `data.prepare_returns`.
+
+## Step 2 - Build momentum and risk inputs
+
+**Owner:** Yuzhen Chen
+
+Implement the trailing 12-month momentum score, the 60-month covariance model, and the fixed 5% preliminary covariance shrinkage. Cache the inputs with their formation dates, last input dates, and industry ordering.
+
+**Deliverables:** `data/interim/momentum.csv`, `data/interim/risk_models.npz`, and `data/interim/risk_index.csv`.
+
+**Completion criteria:** the positive and negative momentum legs sum to +1 and -1. Each corrected covariance matrix `Q` is positive definite and preserves the original diagonal. Every input used to form positions at month-end `t` is available by `t`.
+
+**Planned entry point:** `data.build_inputs`.
+
+## Step 3 - Validate the EPO benchmark
+
+**Owner:** Yuzhen Chen
+
+Implement only the Equity 1 industry benchmark: raw MVO, MVO with the 5% preliminary correction, and scalar EPO. Select the scalar shrinkage parameter each January using candidate Sharpe ratios from the preceding 60 months. Form principal-component portfolios at `t` and evaluate them at `t+1`.
+
+**Deliverables:** `output/replication_table.csv`, `output/problem_pc_diagnostics.csv`, and `output/problem_pc.png`. Prepare the data and replication sections of the report and the corresponding presentation material.
+
+**Completion criteria:** evaluate 1942-2018 where the required histories are available. Document implementation differences from the published paper and compare predicted versus realized risk and return. Treat this as implementation validation, not a separate research hypothesis or a claim of exact replication.
+
+**Planned entry point:** `replication.run`.
+
+## Step 4 - Measure scalar compression loss
+
+**Owner:** Yadan Zhan
+
+Implement the known-covariance Gaussian model and compare the heterogeneous allocation with the best scalar allocation under the same information set. Separate loss from choosing a scalar parameter poorly from the irreducible loss of the scalar family. Describe exposure alignment through conditional comparisons.
+
+**Deliverables:** `output/simulation_draws.csv`, `output/compression_loss.csv`, and `output/compression_loss.png`.
+
+**Completion criteria:** use the proposal's 49-asset design and 1,000 paired draws per heterogeneity level. Uniform relative uncertainty must recover scalar EPO with approximately zero compression loss. Neither allocation may observe the sampled true mean. Check numerical convergence, boundary solutions, and the zero-position limit. Set uncertainty profiles before drawing the mean and signal noise.
+
+**Planned entry point:** `simulation.run`.
+
+## Step 5 - Estimate forecasts and relative uncertainty
+
+**Owner:** Shuchen Meng
+
+Fit OLS forecasts using 120 completed monthly observation pairs. Refit 200 times using shared sampled dates in 12-month blocks. At the current signal, estimate the variance of the fitted conditional mean, divide by asset-return variance, winsorize at the cross-sectional 5th and 95th percentiles, apply the numerical floor, and normalize to mean one.
+
+**Deliverables:** a reusable forecasting and bootstrap function in `src/epo_project/reliability.py`, `data/interim/forecast_reliability.csv`, and `output/reliability_diagnostics.csv`.
+
+**Completion criteria:** relative uncertainty weights are positive and have cross-sectional mean one. If all fitted-mean variances vanish, use `h = 1`. Forecasts and uncertainty estimates use information available by `t`; regression pairs satisfy `u+1 <= t`. Do not add regression residual variance to the fitted-mean uncertainty proxy.
+
+**Planned entry point:** `reliability.run`.
+
+## Step 6 - Validate the uncertainty estimator
+
+**Owner:** Yadan Zhan
+
+Define one fixed linear forecasting data-generating process and use the exact estimator delivered in Step 5. Compare conditional-mean estimation errors with bootstrap variance estimates and assess interval coverage. Combine this check with Step 4 when interpreting the simulation evidence.
+
+**Deliverables:** `output/estimator_calibration.csv` and `output/estimator_calibration.png`. Prepare the theory and simulation sections of the report and the corresponding presentation material.
+
+**Completion criteria:** record all simulation parameters and seeds. Reuse the implemented estimation procedure rather than replacing it with artificially added reliability noise. Distinguish conditional-mean estimation error from realized return variance. Step 5 is an interface dependency; it does not supply a true mean for the simulation.
+
+**Planned entry point:** `simulation.validate_estimator`.
+
+## Step 7 - Run matched empirical portfolios
+
+**Owner:** Shuchen Meng
+
+Construct scalar and heterogeneous portfolios with the same forecasts, covariance model, eligible industries, and `gamma = 3`. Each January, use the scalar candidates' preceding 60-month net certainty-equivalent returns to choose one common `w`. The heterogeneous rule changes only the relative uncertainty weights. Apply 10 basis points per dollar traded and a 50-basis-point annual charge on short exposure.
+
+**Deliverables:** `output/annual_selection.csv`, `output/weights.csv`, and `output/matched_returns.csv`.
+
+**Completion criteria:** no additional heterogeneity tuning parameter is selected. Both portfolios share the same `w`, universe, and dates. The primary comparison uses fixed risk aversion without independent volatility targeting. Audit historical selection, drift-adjusted turnover, cash financing, and costs. Freeze the 2019-2025 design before using its results for evaluation.
+
+**Planned entry point:** `backtest.run`.
+
+## Step 8 - Evaluate economic value and uncertainty
+
+**Owner:** Shuchen Meng
+
+Estimate net `delta CE` and a two-sided 95% interval using 1,000 paired moving-block bootstrap samples. Summarize Sharpe ratio, volatility, 95% expected shortfall, maximum drawdown, turnover, and gross exposure. Report historical and subsequent evaluation periods separately.
+
+**Deliverables:** `output/performance_table.csv`, `output/delta_ce_bootstrap.csv`, and `output/equity_curves.png`. Prepare the empirical findings and limitations sections of the report and the corresponding presentation material.
+
+**Completion criteria:** use 12-month blocks for the primary interval and 6- and 24-month blocks for sensitivity checks. Resample the two strategies together. Do not interpret statistical insignificance as economic equivalence or confuse theoretical compression loss with empirical net `delta CE`.
+
+**Planned entry point:** `evaluation.run`.
+
+## Step 9 - Check deployment sensitivity
+
+**Owner:** Shuchen Meng
+
+Reuse the shrinkage parameters selected in the primary empirical analysis. Apply the same 10% predicted-volatility targeting rule to each portfolio, then reduce gross exposure to at most 3. Report how often the cap binds. Additional cost scenarios, factor attribution, and reliability-history permutations remain optional follow-ups.
+
+**Deliverable:** `output/deployment_sensitivity.csv`.
+
+**Completion criteria:** do not retune `w` separately for the heterogeneous strategy. Interpret the scaled and capped comparison separately from the unconstrained theoretical optimality result.
+
+**Planned entry point:** `evaluation.deployment_sensitivity`.
+
+## Step 10 - Assemble the final report and presentation
+
+**Owner:** Shuchen Meng
+
+Integrate Yuzhen's data and replication material, Yadan's theory and simulation material, and the empirical findings. Coordinate feedback, align the conclusions with the evidence, and assemble the final report and presentation. Each contributor supplies the material assigned in their earlier steps; Shuchen owns the final integration.
+
+**Deliverables:** `output/result_manifest.json`, `output/report_summary.md`, the final report, and the presentation deck.
+
+**Completion criteria:** every reported result is traceable to its input version, parameters, seed, code commit, and saved artifact. Resolve inconsistencies across sections and verify all tables and figures. Clearly distinguish synthetic experiments from empirical findings and theoretical guarantees from implementation results.
+
+**Planned entry point:** `reporting.run`.
+
+## Development and handoffs
+
+- Yuzhen uses `feature/data-and-replication`; Yadan uses `feature/theory-and-simulation`; Shuchen uses `feature/reliability-and-oos`.
+- Step 4 can proceed alongside Steps 1-3 after Step 0. Step 6 starts when the reusable Step 5 estimator is available.
+- Submit small pull requests and request a teammate's review before merging. The step owner remains accountable for resolving feedback and completing the deliverables.
+- Fill the notebook gradually with calls and explanations. Keep substantial calculations in source modules to reduce notebook conflicts.
+- The repository owner adds collaborators. Agree on deadlines within the team rather than treating this workflow as a fixed schedule.
+
+## Data and output conventions
+
+- Use ISO month-end dates and decimal simple returns. Distinguish total returns, the risk-free rate, and excess returns; preserve missing observations.
+- Positions formed at `t` earn returns in `t+1`. Store information cutoffs explicitly and avoid shifting returns twice.
+- Store source data and reusable intermediate inputs under future `data/raw`, `data/processed`, and `data/interim` directories. Store generated tables, figures, diagnostics, and report artifacts under `output`.
+- Keep `src`, `data`, `output`, and the notebook unfilled until their assigned development steps begin. Agree on data schemas, output formats, and version-control rules before adding generated files.
+- Record input versions, parameters, seeds, code commits, and generation dates with the results. The current Git ignore rule excludes data files other than `.gitkeep`; update it deliberately when the team agrees what should be tracked.
+
+## Interpretation boundaries
+
+The nonnegative theoretical loss follows from the specified model and optimality criterion. Empirical net `delta CE` can be negative. The common-parameter empirical comparison evaluates the prescribed implementable rules; it does not establish superiority over every scalar rule. Report 1970-2018 and 2019-2025 separately. If the latter informed design choices, do not label it an untouched holdout.
