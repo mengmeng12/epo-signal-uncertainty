@@ -1,6 +1,6 @@
 # When Is One Shrinkage Parameter Enough
 
-Signal uncertainty in Enhanced Portfolio Optimization — FRE 6123 Financial Risk Management, Professor Adams.
+Signal uncertainty in Enhanced Portfolio Optimization.
 
 **Team:** Yuzhen Chen, Yadan Zhan, Shuchen Meng.
 
