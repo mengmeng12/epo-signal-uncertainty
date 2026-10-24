@@ -1,0 +1,6 @@
+eigenvalue_group,mean_eigenvalue,realized_to_predicted_vol,ex_ante_sharpe_relative,realized_sharpe_signal_direction,risk_share_mvo_q,risk_share_oos_epo
+1,0.0675,1.9482,0.9643,0.1400,0.1896,0.0345
+2,0.1268,1.5691,1.0199,0.0145,0.2082,0.0460
+3,0.2528,1.2353,1.0161,0.3207,0.2008,0.0715
+4,0.5157,0.9639,1.0130,0.5735,0.2036,0.1691
+5,4.3436,0.8810,0.9856,0.5423,0.1978,0.6789

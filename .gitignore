@@ -12,3 +12,10 @@ build/
 dist/
 data/*
 !data/.gitkeep
+!data/README.md
+# Data upload policy (Yuzhen): track all data files except the risk-model cache,
+# whose zip headers differ across Python versions (see data/README.md).
+!data/raw/
+!data/processed/
+!data/interim/
+data/interim/risk_models.npz
