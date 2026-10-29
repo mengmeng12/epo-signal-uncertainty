@@ -74,6 +74,8 @@ SIM_MEAN_LAMBDA = 0.1
 SIM_TAU = 0.04            # mu ~ N(0, tau * Sigma): 1% marginal monthly s.d.
 SIM_DRAWS = 1000
 SIM_CV_LEVELS = (0.0, 0.5, 1.0)
+SIM_SEED = 20261023       # one seed for the uncertainty profiles, mu and signal noise
+SIM_W_GRID_POINTS = 2001  # coarse grid on w in [0, 1] before refining the oracle scalar
 
 # ---------------------------------------------------------------- benchmark diagnostics
 PC_GROUPS = 5             # eigenvalue-rank groups, group 1 = smallest eigenvalues
