@@ -70,7 +70,7 @@ With the published procedure our implementation matches the published Sharpe rat
 
 Earlier exploratory work by Yuzhen (outside this repository) downloaded data through August 2026 but computed and inspected results only for 1942–2018; no design choice used 2019 or later. The 2019–2025 period has not informed the design so far.
 
-### Step 5 handoff update (2026-10-30)
+### Step 5 update (2026-10-30)
 
 The preceding paragraph records Yuzhen's earlier work. Isabella's separate local quick experiment has since computed and inspected 2019–2025 empirical results. The team should now call this a **subsequent evaluation period**, and should not describe it as an untouched holdout. No Step 7 portfolio results are added by this commit.
 
@@ -86,4 +86,4 @@ The preceding paragraph records Yuzhen's earlier work. Isabella's separate local
 | Local admission sensitivity | minimum_ready_months=60 reproduces the local experiment's extra 60-month eligibility streak. Team alignment is required before Step 7; this is separate from the 60-month candidate selection history |
 | Formation range | First eligible date through 2025-11, supporting target returns through 2025-12; earlier dates are cached for warmup |
 
-Steps 1–4 calculations and tracked results are unchanged by Step 5. The [alignment review](step5_alignment_review.md) records the unresolved missing-next-return convention, simulation reporting units, and the local bankruptcy-exit rule that will need explicit treatment in Step 7.
+Steps 1–4 calculations and tracked results are unchanged by Step 5. Agree on the missing-next-return convention and industry admission rule before Step 7. Its backtest will also need explicit treatment of bankrupt candidates.

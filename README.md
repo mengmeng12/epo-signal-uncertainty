@@ -8,8 +8,6 @@ We study when compressing heterogeneous signal uncertainty into one scalar prese
 
 This feature branch contains Steps 0–5: data and benchmark work by Yuzhen, scalar compression loss by Yadan, and forecasting / relative uncertainty by Shuchen (Isabella). It builds on `feature/theory-and-simulation` at `667e8d6`, which includes the data branch at `f789590`. Steps 6–10 remain to be implemented. This status describes the feature branch; the work has not been merged into `main`.
 
-The [Step 5 handoff](doc/step5_handoff.md) gives Yadan the estimator interface for Step 6. The [alignment review](output/step5_alignment_review.md) documents differences from the local walkthrough, including missing-return treatment and industry admission rules.
-
 ## Layout
 
 ```text

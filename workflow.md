@@ -2,7 +2,7 @@
 
 Research question: when does one scalar preserve decision-relevant uncertainty information, and when does even the best scalar lose economic value? Simulations identify the mechanism; the empirical study evaluates an implementable uncertainty proxy.
 
-Steps 0–5 are implemented on `feature/reliability-and-oos`; Steps 6–10 remain planned work. See `doc/step5_handoff.md` for the Step 6 estimator interface and `output/step5_alignment_review.md` for conventions needing team alignment. The revised proposal is the design authority.
+Steps 0–5 are implemented on `feature/reliability-and-oos`; Steps 6–10 remain planned work. The revised proposal is the design authority.
 
 Each step has one accountable owner. Other members can review or provide inputs without sharing responsibility for completing that step. Step numbers describe the workflow; independent steps can run in parallel.
 
