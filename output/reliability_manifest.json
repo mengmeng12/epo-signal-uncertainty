@@ -1,0 +1,25 @@
+{
+  "formation_start": "1941-06-30",
+  "formation_end": "2025-11-30",
+  "rows": 46662,
+  "formation_months": 1014,
+  "regression_pairs": 120,
+  "bootstrap_draws": 200,
+  "block_length": 12,
+  "seed": 20261029,
+  "minimum_ready_months": 1,
+  "winsor_quantiles": [
+    0.05,
+    0.95
+  ],
+  "h_floor": 1e-08,
+  "hashes": {
+    "data/processed/returns.csv": "b12cd714642d0c6d8ce5d685da825da62b3eb17f533b5c438e3fd7e46180ae64",
+    "data/interim/momentum.csv": "e0a33e4fcd039c7ce40b99282838e92321cf66fbba3e51eff964a2ba7d44e1d9",
+    "src/epo_project/config.py": "8364f2e72b15235e0476ed55ef2b38c4a3be2f7fd186cb186f8a58bc7debbe35",
+    "src/epo_project/data.py": "e8a3688d3daa65c3ae0ae9279da2e7289b5d8ae8ae73be367efd63735885a886",
+    "src/epo_project/reliability.py": "9785872f01516d7e4dc1d4642908a18f291b2e5f192e6351122c9eb459db36fa",
+    "data/interim/forecast_reliability.csv": "6fd61ef63ebf71e0b27f74ea88fded5e1c545b9f7a593e28d6f8dcb397ee11af",
+    "output/reliability_diagnostics.csv": "224dce4373862edd9def362dadddd5f8fa533286b269008e1e564283e7ba220d"
+  }
+}

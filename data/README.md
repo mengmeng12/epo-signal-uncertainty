@@ -6,7 +6,7 @@
 |---|---|
 | `raw/`: both French zip files, the extracted CSVs and `source_manifest.json` | `interim/risk_models.npz` (25 MB) |
 | `processed/`: `returns.csv`, `eligibility.csv` | |
-| `interim/`: `momentum.csv`, `risk_index.csv` | |
+| `interim/`: `momentum.csv`, `risk_index.csv`, `forecast_reliability.csv` | |
 
 The data vintage is fixed by the zips: downloaded 2026-10-23, CRSP 202608. `risk_models.npz` is not tracked because its numbers are reproducible but its zip headers depend on the Python version that writes it, so Git would report a change after every run in another environment.
 
@@ -22,7 +22,7 @@ Run `end_to_end_pipeline.ipynb` from the top (or `PYTHONPATH=src python -m epo_p
 
 To move to a newer data vintage, delete the zips (or call `prepare_returns(force_download=True)`) and commit the new zips, CSVs and manifest together.
 
-All dates are ISO month-ends and all returns are decimal simple returns. Missing values are left empty and never filled.
+All dates are ISO month-ends and all returns are decimal simple returns. Missing values in stored data are left empty. Step 3 currently fills a missing next-month excess return with zero when evaluating portfolios; this proposed convention is under review (see `output/step5_alignment_review.md`). Step 5 does not fill missing observations.
 
 ## raw/ (Step 1)
 
@@ -46,3 +46,27 @@ Loaders: `epo_project.data.load_returns(kind)` and `load_eligibility(column)` re
 | `risk_index.csv` | `formation_date`, `window_start`, `last_input_date`, `n_industries`, `min_eigenvalue_q`, `industries` (pipe-separated order of the matrix) |
 
 Loader: `epo_project.data.load_inputs()` returns z (wide), the risk index, and `{formation_date: (industries, Sigma_hat, Q)}` with each matrix cut to its own universe and order.
+
+## interim/ (Step 5)
+
+`forecast_reliability.csv` has one row per formation date and eligible industry. Run `PYTHONPATH=src python -m epo_project.reliability` to rebuild it from `returns.csv` and `momentum.csv` without rebuilding earlier steps.
+
+| Columns | Definition |
+|---|---|
+| `date`, `target_date`, `industry` | Formation month t, target month t+1, industry label; join by label, not row position |
+| `z`, `alpha`, `beta`, `s` | Current Step 2 momentum, fitted intercept/slope, forecast `s = alpha + beta*z` of monthly excess return (decimal) |
+| `u` | Bootstrap variance of the fitted conditional mean, decimal return squared; excludes future residual noise |
+| `sigma2` | Sample variance of the latest 60 monthly excess returns, ddof=1; equals diag(Q) |
+| `h` | Winsorized and floored `u/sigma2`, normalized to mean 1 within the formation-date forecast universe |
+| `regression_ready_months` | Consecutive months satisfying the 120-pair regression, current signal and risk-history requirements |
+| `predictor_start`, `predictor_end` | t−120 through t−1 (120 observations) |
+| `response_start`, `response_end` | t−119 through t (120 observations) |
+| `risk_start`, `last_input_date` | t−59 and t; every estimator input is known by t |
+
+Default eligibility requires 120 **consecutive, completed** pairs and current risk/signal inputs. Missing data exclude that industry at formation time until its complete history is restored. The optional `minimum_ready_months=60` adds the local walkthrough's admission delay; tracked results use the shared workflow default of 1. See the handoff before choosing the Step 7 universe.
+
+If the investment universe changes, recompute winsorization and normalization from `u` and `sigma2` on that universe using `relative_uncertainty`. Filtering stored `h` alone is insufficient. Keep the Step 2 definition of `z`; it is normalized on the benchmark universe.
+
+`output/reliability_diagnostics.csv` records the industry count, mean/min/max/CV of h (CV uses population standard deviation), mean u, zero-u count, and 12-month Spearman rank persistence using common industry labels. Rank persistence is blank until both dates are present, or if ranks are constant. A partial run can therefore have fewer persistence observations than the full run.
+
+`output/reliability_manifest.json` records input/code/output hashes and estimator parameters. CSVs use 12 significant digits; the in-memory API retains full precision. See `doc/step5_handoff.md` for the array-level Step 6 interface.

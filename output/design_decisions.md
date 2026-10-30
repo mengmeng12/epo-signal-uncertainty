@@ -69,3 +69,21 @@ With the published procedure our implementation matches the published Sharpe rat
 ## Holdout status
 
 Earlier exploratory work by Yuzhen (outside this repository) downloaded data through August 2026 but computed and inspected results only for 1942–2018; no design choice used 2019 or later. The 2019–2025 period has not informed the design so far.
+
+### Step 5 handoff update (2026-10-30)
+
+The preceding paragraph records Yuzhen's earlier work. Isabella's separate local quick experiment has since computed and inspected 2019–2025 empirical results. The team should now call this a **subsequent evaluation period**, and should not describe it as an untouched holdout. No Step 7 portfolio results are added by this commit.
+
+| Step 5 decision | Implementation / status |
+|---|---|
+| Training pairs at formation t | 120 consecutive pairs, z[t−120:t−1] against excess returns[t−119:t]; no imputation |
+| OLS | Separate intercept and slope per industry; constant predictor (centered sum of squares ≤ 1e−14) uses intercept-only prediction |
+| Bootstrap | 200 non-circular moving-block samples, length 12, same sampled pair dates for every industry; refit and evaluate at fixed z[t] |
+| u and h | u = sample variance of bootstrap fitted means (ddof=1); no residual variance added. h uses u/diag(Q), cross-sectional 5/95% winsorization, floor 1e−8, then mean-one normalization; all u=0 gives h=1 |
+| Risk variance | Latest 60 excess returns with ddof=1; equals diag(Q), so Step 5 does not need the full covariance cache |
+| Seed | 20261029 combined with formation YYYYMM through SeedSequence; independent of Step 4's seed |
+| Default admission | 120-pair eligibility, minimum_ready_months=1, following the shared Step 5 wording |
+| Local admission sensitivity | minimum_ready_months=60 reproduces the local experiment's extra 60-month eligibility streak. Team alignment is required before Step 7; this is separate from the 60-month candidate selection history |
+| Formation range | First eligible date through 2025-11, supporting target returns through 2025-12; earlier dates are cached for warmup |
+
+Steps 1–4 calculations and tracked results are unchanged by Step 5. The [alignment review](step5_alignment_review.md) records the unresolved missing-next-return convention, simulation reporting units, and the local bankruptcy-exit rule that will need explicit treatment in Step 7.

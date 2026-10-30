@@ -1,0 +1,50 @@
+{
+  "local_estimator_checks": [
+    {
+      "date": "1969-12-31",
+      "assets": 43,
+      "max_absolute_difference_vs_local_function": {
+        "s": 0.0,
+        "u": 0.0,
+        "h": 5.1958437552457326e-14
+      }
+    },
+    {
+      "date": "1999-12-31",
+      "assets": 49,
+      "max_absolute_difference_vs_local_function": {
+        "s": 0.0,
+        "u": 0.0,
+        "h": 3.5083047578154947e-14
+      }
+    },
+    {
+      "date": "2018-12-31",
+      "assets": 49,
+      "max_absolute_difference_vs_local_function": {
+        "s": 0.0,
+        "u": 0.0,
+        "h": 1.2745360322696797e-13
+      }
+    },
+    {
+      "date": "2025-11-30",
+      "assets": 49,
+      "max_absolute_difference_vs_local_function": {
+        "s": 0.0,
+        "u": 0.0,
+        "h": 1.4210854715202004e-13
+      }
+    }
+  ],
+  "max_serialized_h_mean_error": 9.592326932761353e-13,
+  "byte_identical_rerun": true,
+  "rows": 46662,
+  "months": 1014,
+  "min_assets": 40,
+  "max_assets": 49,
+  "h_range": [
+    0.142061473879,
+    5.98020591899
+  ]
+}

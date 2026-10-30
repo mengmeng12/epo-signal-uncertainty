@@ -2,7 +2,7 @@
 
 Research question: when does one scalar preserve decision-relevant uncertainty information, and when does even the best scalar lose economic value? Simulations identify the mechanism; the empirical study evaluates an implementable uncertainty proxy.
 
-The repository is a starting point. The notebook is blank, and `src`, `data`, and `output` contain only `.gitkeep` placeholders. All modules, subdirectories, and deliverables listed below are planned work. The revised proposal is the design authority.
+Steps 0–5 are implemented on `feature/reliability-and-oos`; Steps 6–10 remain planned work. See `doc/step5_handoff.md` for the Step 6 estimator interface and `output/step5_alignment_review.md` for conventions needing team alignment. The revised proposal is the design authority.
 
 Each step has one accountable owner. Other members can review or provide inputs without sharing responsibility for completing that step. Step numbers describe the workflow; independent steps can run in parallel.
 
@@ -165,8 +165,8 @@ Integrate Yuzhen's data and replication material, Yadan's theory and simulation 
 - Use ISO month-end dates and decimal simple returns. Distinguish total returns, the risk-free rate, and excess returns; preserve missing observations.
 - Positions formed at `t` earn returns in `t+1`. Store information cutoffs explicitly and avoid shifting returns twice.
 - Store source data and reusable intermediate inputs under future `data/raw`, `data/processed`, and `data/interim` directories. Store generated tables, figures, diagnostics, and report artifacts under `output`.
-- Keep `src`, `data`, `output`, and the notebook unfilled until their assigned development steps begin. Agree on data schemas, output formats, and version-control rules before adding generated files.
-- Record input versions, parameters, seeds, code commits, and generation dates with the results. The current Git ignore rule excludes data files other than `.gitkeep`; update it deliberately when the team agrees what should be tracked.
+- Add modules and notebook sections as their assigned development steps begin. Agree on data schemas, output formats, and version-control rules before adding generated files.
+- Record input versions, parameters, seeds, code commits, and generation dates with the results. The tracked-data policy is documented in `data/README.md`; `risk_models.npz` is rebuilt locally.
 
 ## Interpretation boundaries
 

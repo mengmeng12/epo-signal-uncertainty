@@ -57,6 +57,7 @@ COST_SENSITIVITY = (0.0, 0.0025)  # optional trading-cost scenarios
 REGRESSION_PAIRS = 120
 BOOTSTRAP_DRAWS = 200
 BOOTSTRAP_BLOCK = 12
+RELIABILITY_SEED = 20261029  # date-keyed bootstrap; independent of the Step 4 simulation
 H_WINSOR = (0.05, 0.95)
 H_FLOOR = 1e-8
 

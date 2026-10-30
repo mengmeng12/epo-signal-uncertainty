@@ -1,0 +1,57 @@
+{
+  "reviewed_commits": {
+    "data": "f789590",
+    "theory": "667e8d6"
+  },
+  "missing_next_returns": [
+    {
+      "formation_date": "1943-06-30",
+      "return_date": "1943-07-31",
+      "industries": [
+        "Rubbr"
+      ]
+    }
+  ],
+  "same_vintage_missing_comparison": {
+    "zero": {
+      "months": 924,
+      "raw": 0.3032971959067829,
+      "corrected": 0.5724316534253037,
+      "oos": 0.7508970281616567
+    },
+    "missing": {
+      "months": 863,
+      "raw": 0.32211128806610756,
+      "corrected": 0.5914573193125766,
+      "oos": 0.7702638371734448
+    }
+  },
+  "excluded_selection_years": [
+    1944,
+    1945,
+    1946,
+    1947,
+    1948
+  ],
+  "vintage_comparison_through_2025": {
+    "common_months": 1194,
+    "missing_masks_equal": true,
+    "changed_industry_months": 0,
+    "max_abs_return_change": 1.1102230246251565e-16,
+    "changed_rf_months": 0
+  },
+  "oracle_grid_check_30_draws_per_level": [
+    {
+      "target_cv": 0.0,
+      "max_utility_change": 6.938893903907228e-17
+    },
+    {
+      "target_cv": 0.5,
+      "max_utility_change": 4.163336342344337e-17
+    },
+    {
+      "target_cv": 1.0,
+      "max_utility_change": 5.551115123125783e-17
+    }
+  ]
+}
