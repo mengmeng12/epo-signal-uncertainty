@@ -78,5 +78,20 @@ SIM_CV_LEVELS = (0.0, 0.5, 1.0)
 SIM_SEED = 20261023       # one seed for the uncertainty profiles, mu and signal noise
 SIM_W_GRID_POINTS = 2001  # coarse grid on w in [0, 1] before refining the oracle scalar
 
+# Step 6 estimator check: z[t+1] = phi z[t] + eta, r[t+1] = a + b z[t] + e[t+1], known E[r[t+1] | z[t]].
+# Persistence and signal scale match the tracked momentum panel (median lag-1 autocorrelation 0.92,
+# s.d. 0.056); OLS errors do not depend on a and b.
+EST_REPLICATIONS = 1000   # independent histories; each is one formation date for all assets
+EST_SEED = 20261101
+EST_PERSISTENCE = 0.92
+EST_SIGNAL_SD = 0.056
+EST_VOL_RANGE = (0.04, 0.08)   # residual monthly vols, evenly spaced across the assets
+EST_INTERCEPT = 0.005
+EST_SLOPE = 0.10
+# corr(eta[t], e[t]): 0 is the estimator's own model; 0.4 is near the median correlation between the
+# momentum innovation and the same-month industry excess return (feedback sensitivity).
+EST_FEEDBACK = (0.0, 0.4)
+EST_COVERAGE = (0.90, 0.95)
+
 # ---------------------------------------------------------------- benchmark diagnostics
 PC_GROUPS = 5             # eigenvalue-rank groups, group 1 = smallest eigenvalues

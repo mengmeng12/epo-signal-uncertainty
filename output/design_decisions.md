@@ -87,3 +87,25 @@ The preceding paragraph records Yuzhen's earlier work. Isabella's separate local
 | Formation range | First eligible date through 2025-11, supporting target returns through 2025-12; earlier dates are cached for warmup |
 
 Steps 1–4 calculations and tracked results are unchanged by Step 5. Agree on the missing-next-return convention and industry admission rule before Step 7. Its backtest will also need explicit treatment of bankrupt candidates.
+
+### Step 6 estimator check (2026-11-01)
+
+| Step 6 decision | Implementation / status |
+|---|---|
+| Model | z[t+1] = 0.92 z[t] + 0.056·√(1−0.92²)·η, r[t+1] = 0.005 + 0.10 z[t] + e[t+1]; true mean a + b z[t] is known. Persistence and signal s.d. match the tracked momentum panel |
+| Cross-section | 49 assets, residual vols evenly spaced 4%–8% a month, residual correlation 0.3; predictor innovations independent across assets |
+| Feedback | corr(η[t], e[t]) = 0 (the estimator's model) and 0.4 (near the empirical median of 0.39 between the momentum innovation and the same-month excess return), on common random numbers |
+| Estimator | `reliability.estimate_forecasts` unchanged: 120 pairs, 200 moving blocks of 12, asset variance from the latest 60 training returns |
+| Replications and seed | 1,000 histories, one formation date each; seed 20261101 split by SeedSequence into a data stream and per-history bootstrap streams |
+| Inference | Monte Carlo standard errors clustered by history, since assets share shocks and bootstrap dates |
+
+Results (`output/estimator_calibration.csv`, `output/estimator_calibration.png`), feedback 0 with feedback 0.4 in brackets:
+
+- The simulation is consistent: actual MSE / analytic OLS variance = 1.002 ± 0.011, and intervals built from the exact variance cover 95.2%.
+- u is close to unbiased on average: actual MSE / mean u = 0.94 ± 0.01 (0.91), so u slightly overstates error, most at high-leverage points. Forecast bias is −0.4 ± 1.0 bp (−0.5).
+- u is noisy: the s.d. of u / true variance is 0.49 (0.55). Resampling noise from 200 draws accounts for only about 0.10 (√(2/199)); the rest is variation of the bootstrap variance across histories, so more draws would not remove it. Normal 95% intervals cover 92.4% (92.8%), and percentile intervals 89.8% (88.8%). Sorting on u exaggerates both tails: the lowest u decile covers 85%, the highest 97%.
+- Ranking: Spearman correlation of u with the true variance across assets is 0.84 (0.83); of h with the true relative uncertainty, 0.77 (0.75). h therefore carries real but imperfect information about relative uncertainty, which Step 4 treats as known.
+- Estimation error is small next to return noise: u is about 2% of the realized forecast MSE.
+- Feedback 0.4 changes these numbers little.
+
+These check the implemented estimator under a known linear model; they do not show that u measures forecast uncertainty in market data.
