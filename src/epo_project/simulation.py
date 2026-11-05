@@ -180,6 +180,19 @@ def _mean_row(sub: pd.DataFrame, **labels) -> dict:
     return row
 
 
+def alignment_terciles(values: pd.Series) -> pd.Series:
+    """Stable equal-count groups; split tied boundaries by original observation order.
+
+    Rank slicing avoids qcut boundary round-off across pandas/NumPy versions.
+    With 1,000 draws the low/middle/high group sizes are 334/333/333.
+    """
+    labels = ["low", "middle", "high"]
+    groups = pd.Series(index=values.index, dtype="object")
+    for label, indices in zip(labels, np.array_split(values.sort_values(kind="stable").index.to_numpy(), 3)):
+        groups.loc[indices] = label
+    return pd.Series(pd.Categorical(groups, categories=labels, ordered=True), index=values.index)
+
+
 def run(make_plot: bool = True) -> dict:
     rng = np.random.default_rng(cfg.SIM_SEED)
     profiles = {cv: uncertainty_profile(cv, rng) for cv in cfg.SIM_CV_LEVELS}   # fixed before mu and eps
@@ -214,7 +227,7 @@ def run(make_plot: bool = True) -> dict:
     for (cv, rcv), sub in draws.groupby(["target_cv", "realized_cv"]):
         rows.append(_mean_row(sub, target_cv=cv, realized_cv=rcv, subset="all"))
         if cv > 0:
-            tercile = pd.qcut(sub["alignment"], 3, labels=["low", "middle", "high"])
+            tercile = alignment_terciles(sub["alignment"])
             for name, part in sub.groupby(tercile, observed=True):
                 rows.append(_mean_row(part, target_cv=cv, realized_cv=rcv, subset=f"alignment_{name}"))
     table = pd.DataFrame(rows)

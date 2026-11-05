@@ -1,9 +1,10 @@
 """Timing and invariance checks for the Step 6 estimator simulation."""
 
 import numpy as np
+import pandas as pd
 
 from epo_project import config as cfg
-from epo_project.simulation import estimator_draws, estimator_history
+from epo_project.simulation import alignment_terciles, estimator_draws, estimator_history
 
 
 def _shocks(n_rep=3, n_assets=5, seed=7):
@@ -15,6 +16,16 @@ def _shocks(n_rep=3, n_assets=5, seed=7):
 
 def _seeds(n_rep):
     return np.random.SeedSequence(1).spawn(n_rep)
+
+
+def test_alignment_groups_have_stable_boundaries_and_ties():
+    values = pd.Series(np.arange(1000, dtype=float), index=np.arange(1000) + 2000)
+    groups = alignment_terciles(values)
+    assert groups.value_counts(sort=False).tolist() == [334, 333, 333]
+    assert groups.loc[2333] == "low" and groups.loc[2334] == "middle"
+    assert groups.loc[2666] == "middle" and groups.loc[2667] == "high"
+    tied = alignment_terciles(pd.Series(np.zeros(1000)))
+    assert tied.value_counts(sort=False).tolist() == [334, 333, 333]
 
 
 def test_history_follows_the_stated_recursion():
