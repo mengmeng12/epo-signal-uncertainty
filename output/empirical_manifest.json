@@ -1,0 +1,57 @@
+{
+  "candidate_start": "1960-01-31",
+  "periods": {
+    "1970-2018": [
+      "1970-01-31",
+      "2018-12-31"
+    ],
+    "2019-2025": [
+      "2019-01-31",
+      "2025-12-31"
+    ]
+  },
+  "gamma": 3.0,
+  "w_grid": [
+    0.0,
+    0.25,
+    0.5,
+    0.75,
+    0.9,
+    0.95,
+    0.99
+  ],
+  "minimum_ready_months": 1,
+  "trading_cost": 0.001,
+  "short_fee_annual": 0.005,
+  "bootstrap_draws": 1000,
+  "bootstrap_seed": 20261105,
+  "block_months": [
+    12,
+    6,
+    24
+  ],
+  "deployment_target_vol": 0.1,
+  "deployment_gross_cap": 3.0,
+  "hashes": {
+    "data/processed/returns.csv": "b12cd714642d0c6d8ce5d685da825da62b3eb17f533b5c438e3fd7e46180ae64",
+    "data/interim/forecast_reliability.csv": "6fd61ef63ebf71e0b27f74ea88fded5e1c545b9f7a593e28d6f8dcb397ee11af",
+    "src/epo_project/config.py": "419ac79bb5dbe136045124d7680f888febea53673067fcdc35e50dc4748f7ba3",
+    "src/epo_project/backtest.py": "23b00a60b0067b7abcc7c8a10b66bf9ad9b846917ea50cfed2e2a2ed34a5fe86",
+    "src/epo_project/evaluation.py": "7ae16f1dee357813057388fff7689b649eb1a74ba9478695749f789ab23d153b",
+    "src/epo_project/reliability.py": "9785872f01516d7e4dc1d4642908a18f291b2e5f192e6351122c9eb459db36fa",
+    "src/epo_project/data.py": "e8a3688d3daa65c3ae0ae9279da2e7289b5d8ae8ae73be367efd63735885a886",
+    "output/annual_selection.csv": "fdaf27b6b51906184e1e190a19fd002956b9d913d0007e92bc9f9a2b7089626c",
+    "output/candidate_returns.csv": "691e57a41fca8b400911e9fe06b3c532ab07f0c3a4910733efac6b6103ef0958",
+    "output/candidate_exits.csv": "1b59a9c61413dbb14d756351db7c656eccc986c3cae4414d3894d994b242ab8d",
+    "output/weights.csv": "f3f57b886e2cda603400c42e4becda8c43c3e7c060b5222dadb257c050f087e3",
+    "output/matched_returns.csv": "7f50899ed7ba7eae59e56d48ed33e4c213c25810d2e42b03b88a746a09dfb0cf",
+    "output/performance_table.csv": "031e606102851a61ab76f215409837d4f295014a304b2b8ef9aec31d352d037e",
+    "output/delta_ce_summary.csv": "e258705a1459aeff6372c9ffb1a1d064885252e1a26b91b040c04ab1b5b34b87",
+    "output/delta_ce_bootstrap.csv": "77a8edad4499068604fe0680081b2818716e17c8508d07f85049c2d4e26145fe",
+    "output/equity_curves.csv": "0564228d6db19ae34b9946a224c89f162a4414cfee4f8c79a50dbf9efe3e6c13",
+    "output/equity_curves.png": "699747e5dde0347cf56ce91de9eb17a58ef4892580a827cb1ad657aa55cdab42",
+    "output/deployment_sensitivity.csv": "c68f08bc4fb11e5c3d3a78bd6efa10e10cc4866671bea1906105a2403d08a848",
+    "output/deployment_returns.csv": "3f738a6440cf55575e447de955386fb8bb44cf0cf5d7574c0928a3997c08289e",
+    "output/deployment_weights.csv": "4d99a3d0d31af88cdacaf42d00d5aa1273986cca179a6c9eaab1c6df334038ac"
+  }
+}

@@ -66,13 +66,11 @@ Over 1942–2018 the out-of-sample EPO earns a Sharpe ratio of 0.751, against 0.
 
 With the published procedure our implementation matches the published Sharpe ratios within 0.03 for every reported portfolio (out-of-sample EPO 0.797 against 0.79).
 
-## Holdout status
+## Evaluation periods
 
-Earlier exploratory work by Yuzhen (outside this repository) downloaded data through August 2026 but computed and inspected results only for 1942–2018; no design choice used 2019 or later. The 2019–2025 period has not informed the design so far.
+Report 1970–2018 and 2019–2025 separately. Each forecast and annual parameter selection uses information available at its formation date; portfolio holdings continue across the period boundary.
 
 ### Step 5 update (2026-10-30)
-
-The preceding paragraph records Yuzhen's earlier work. Isabella's separate local quick experiment has since computed and inspected 2019–2025 empirical results. The team should now call this a **subsequent evaluation period**, and should not describe it as an untouched holdout. No Step 7 portfolio results are added by this commit.
 
 | Step 5 decision | Implementation / status |
 |---|---|
@@ -83,10 +81,10 @@ The preceding paragraph records Yuzhen's earlier work. Isabella's separate local
 | Risk variance | Latest 60 excess returns with ddof=1; equals diag(Q), so Step 5 does not need the full covariance cache |
 | Seed | 20261029 combined with formation YYYYMM through SeedSequence; independent of Step 4's seed |
 | Default admission | 120-pair eligibility, minimum_ready_months=1, following the shared Step 5 wording |
-| Local admission sensitivity | minimum_ready_months=60 reproduces the local experiment's extra 60-month eligibility streak. Team alignment is required before Step 7; this is separate from the 60-month candidate selection history |
+| Local admission sensitivity | minimum_ready_months=60 reproduces the local experiment's extra 60-month eligibility streak; this is separate from the 60-month candidate selection history. Step 7 uses the shared default of 1 |
 | Formation range | First eligible date through 2025-11, supporting target returns through 2025-12; earlier dates are cached for warmup |
 
-Steps 1–4 calculations and tracked results are unchanged by Step 5. Agree on the missing-next-return convention and industry admission rule before Step 7. Its backtest will also need explicit treatment of bankrupt candidates.
+Steps 1–4 calculations and tracked results were unchanged by Step 5. The implemented empirical accounting and candidate-exit rules are recorded under Steps 7–9 below.
 
 ### Step 6 estimator check (2026-11-01)
 
@@ -109,3 +107,23 @@ Results (`output/estimator_calibration.csv`, `output/estimator_calibration.png`)
 - Feedback 0.4 changes these numbers little.
 
 These check the implemented estimator under a known linear model; they do not show that u measures forecast uncertainty in market data.
+
+### Steps 7–9 empirical implementation (2026-11-05)
+
+| Decision | Implementation |
+|---|---|
+| Universe | Shared Step 5 default: 120 completed consecutive pairs and current signal/risk history; no additional 60-month industry admission delay. h is recomputed within the chosen universe from u/diag(Q) |
+| Primary weights | x = (Q + kappa diag(diag(Q)·h))⁻¹s / 3; scalar uses h=1. kappa=w/(1−w). No sum-to-one normalization, cap or volatility targeting |
+| Candidate warmup | Fixed-w portfolios start from cash for realized January 1960; each has its own drifting holdings and costs. Permanent exits depend on this fixed start date |
+| Candidate insolvency | Total wealth factor ≤0 permanently excludes that fixed-w candidate; the failed month and all later candidate returns remain missing. The supplied data produce exits at w=0 in June 1960 and w=0.25 in December 1961 |
+| Annual selection | Before earning each January return, compare surviving scalar candidates with all 60 preceding calendar months available; choose maximum annualized net CE, ties within 1e−12 favor higher w. Use that w for both strategies for the calendar year |
+| Actual paths | Start from cash in January 1970 and run continuously through December 2025; retain December 2018 holdings for January 2019. Insolvency on either selected path raises an error |
+| Cash and costs | Residual cash = 1−sum(target weights), earning/paying RF. Full L1 turnover from net-wealth drifted holdings costs 10 bp per dollar; shorts cost 50 bp/year divided by 12. Fees are deducted at month end. No extra leverage financing spread |
+| Missing next returns | A missing return on a held industry raises an error; unheld missing returns have no portfolio effect. No held missing return occurs in the completed 1960–2025 run |
+| Risk summaries | Net excess returns for CE/Sharpe/volatility and monthly ES; compounded net total returns for drawdown. Detailed units and ES boundary convention are in data/README.md |
+| Paired inference | 1,000 moving-block draws, seed 20261105 keyed by period start year and block length. 12-month blocks primary; 6/24-month sensitivity. Percentile 95% intervals for annualized net delta CE; no parameter retuning in bootstrap draws |
+| Deployment | Reuse primary w and the same monthly inputs. Scale each allocation to 10% annual predicted volatility under Q, then reduce gross exposure to at most 3. Recompute trading, drift and short fees on deployed holdings; report cap frequency |
+
+Steps 7–9 can run directly from the tracked forecast and return CSVs. Step 10 report/presentation integration is deferred. Tests cover accounting against a hand-worked cash/long/short example, missing data, insolvency, permanent candidate exits, selection timing, allocation scaling, paired resampling, and the risk metrics. A separate local cross-check with minimum_ready_months=60 reproduces the original walkthrough's 672 monthly returns and annual selections to numerical precision; the tracked primary results use minimum_ready_months=1.
+
+Step 4 reproducibility: alignment terciles now use stable sorting and equal-count splits (334/333/333 for 1,000 draws), retaining the original saved group convention. This removes pandas/NumPy quantile-boundary differences; profiles, draws and the utility calculation are unchanged. Ties are split in original draw order.

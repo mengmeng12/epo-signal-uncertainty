@@ -6,7 +6,7 @@ We study when compressing heterogeneous signal uncertainty into one scalar prese
 
 ## Project status
 
-This feature branch contains Steps 0–5: data and benchmark work by Yuzhen, scalar compression loss by Yadan, and forecasting / relative uncertainty by Shuchen (Isabella). It builds on `feature/theory-and-simulation` at `667e8d6`, which includes the data branch at `f789590`. Steps 6–10 remain to be implemented. This status describes the feature branch; the work has not been merged into `main`.
+This feature branch contains Steps 0–9: data and benchmark work by Yuzhen, simulation and estimator calibration by Yadan, and forecasts, matched backtesting and evaluation by Shuchen (Isabella). It includes Yadan's Step 6 commit `b41d0fe`. Step 10 (report and presentation integration) is deferred. This status describes `feature/reliability-and-oos`; the work has not been merged into `main`.
 
 ## Layout
 
@@ -17,11 +17,11 @@ epo-signal-uncertainty/
 │   ├── EPO_Revised_Proposal.docx
 │   ├── README.md
 │   └── document_manifest.json
-├── src/epo_project/           # Data, benchmark, simulation and reliability modules
+├── src/epo_project/           # Data, benchmark, simulation, reliability, backtest and evaluation
 ├── data/                      # Raw, processed and intermediate data
 ├── output/                    # Results, diagnostics and design decisions
-├── tests/                     # Forecast estimator and information-timing tests
-├── end_to_end_pipeline.ipynb   # Calls and results for Steps 1–5
+├── tests/                     # Estimator, timing, accounting and inference tests
+├── end_to_end_pipeline.ipynb   # Calls and results for Steps 1–9
 ├── workflow.md                # Team tasks, outputs and acceptance criteria
 └── README.md
 ```
@@ -41,5 +41,17 @@ PYTHONPATH=src python -m pytest tests/test_reliability.py -q
 ```
 
 The estimator needs NumPy and pandas; tests additionally need pytest. Step 5 does not require the untracked `risk_models.npz` or a download. Its default output contains 46,662 industry-month observations for 1,014 formation months (1941-06 through 2025-11), with target months ending in 2025-12. These are forecast inputs, not portfolio-performance results.
+
+To rebuild Steps 7–9 from the tracked forecasts and market data:
+
+```bash
+PYTHONPATH=src python -m epo_project.backtest
+PYTHONPATH=src python -m epo_project.evaluation
+PYTHONPATH=src python -m pytest -q
+```
+
+Step 7 saves monthly returns, holdings, candidate exits and annual selection. Step 8 saves the performance table and 1,000-draw paired-bootstrap intervals (12-month primary blocks; 6/24-month sensitivities). Step 9 reuses the selected w, targets 10% predicted annual volatility, caps gross exposure at 3 and recomputes costs from its own holdings. The primary test uses fixed gamma=3 without volatility targeting. Both paths run continuously from 1970 through 2025; tables separate 1970–2018 and 2019–2025.
+
+Definitions and artifact schemas are in [data/README.md](data/README.md); accounting and eligibility conventions are in [output/design_decisions.md](output/design_decisions.md). `output/empirical_manifest.json` records the input, code and output hashes for Steps 7–9.
 
 The revised proposal is the design authority. Document provenance, source links, copyright/license details, and checksums are in [doc/README.md](doc/README.md) and [doc/document_manifest.json](doc/document_manifest.json). The reference paper retains its own license; it is not a blanket license for this repository.

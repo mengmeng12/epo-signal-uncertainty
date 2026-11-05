@@ -52,6 +52,8 @@ GROSS_CAP = 3.0           # deployment sensitivity only
 COST_PER_DOLLAR = 0.0010          # 10 bp per dollar traded, drift-adjusted turnover
 SHORT_FEE_ANNUAL = 0.0050         # 50 bp a year on short exposure, accrued monthly
 COST_SENSITIVITY = (0.0, 0.0025)  # optional trading-cost scenarios
+CANDIDATE_START = "1960-01-31"   # first realized warmup month; permanent exits depend on this origin
+EMPIRICAL_MIN_READY_MONTHS = 1  # shared Step 5 admission rule; no extra 60-month delay
 
 # ---------------------------------------------------------------- reliability estimates (extension)
 REGRESSION_PAIRS = 120
@@ -65,6 +67,7 @@ H_FLOOR = 1e-8
 EVAL_BOOTSTRAP_DRAWS = 1000
 EVAL_BLOCK = 12
 EVAL_BLOCK_SENSITIVITY = (6, 24)
+EVAL_SEED = 20261105
 ES_LEVEL = 0.95
 
 # ---------------------------------------------------------------- simulation
