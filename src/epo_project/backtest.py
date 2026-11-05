@@ -172,8 +172,14 @@ def simulate_portfolios(total: pd.DataFrame, rf: pd.Series, forecasts: pd.DataFr
                         fixed_selection: pd.DataFrame | None = None, deployment: bool = False,
                         candidate_start=cfg.CANDIDATE_START, evaluation_start=cfg.EXTENSION_PERIOD[0],
                         end=cfg.SUBSEQUENT_PERIOD[1],
-                        minimum_ready_months: int = cfg.EMPIRICAL_MIN_READY_MONTHS) -> dict:
-    """Run primary candidates/strategies, or replay a frozen selection with deployment constraints."""
+                        minimum_ready_months: int = cfg.EMPIRICAL_MIN_READY_MONTHS,
+                        trade_cost: float = cfg.COST_PER_DOLLAR,
+                        short_fee_annual: float = cfg.SHORT_FEE_ANNUAL) -> dict:
+    """Run candidates/strategies or replay frozen w with optional costs/deployment.
+
+    Explicit fee parameters affect both candidate histories and actual strategies.
+    Each replay carries its own net-wealth drift, including under frozen selection.
+    """
     first, last = pd.Timestamp(evaluation_start), pd.Timestamp(end)
     if first.month != 1 or first != first + pd.offsets.MonthEnd(0) or last < first:
         raise ValueError("Evaluation must start at a January month-end and end after its start.")
@@ -214,7 +220,8 @@ def simulate_portfolios(total: pd.DataFrame, rf: pd.Series, forecasts: pd.DataFr
                     target[month.ids] = allocate(month.q, month.signal, w)
                     try:
                         candidate_pretrade[j], row = portfolio_month(
-                            target, candidate_pretrade[j], month.realized_total, month.rf)
+                            target, candidate_pretrade[j], month.realized_total, month.rf,
+                            trade_cost=trade_cost, short_fee_annual=short_fee_annual)
                         history.loc[date, w] = row["net_excess"]
                         record.update(row, status="active")
                     except PortfolioInsolvency as error:
@@ -234,7 +241,8 @@ def simulate_portfolios(total: pd.DataFrame, rf: pd.Series, forecasts: pd.DataFr
             target = np.zeros(total.shape[1])
             target[month.ids] = local
             try:
-                drift, row = portfolio_month(target, pretrade[name], month.realized_total, month.rf)
+                drift, row = portfolio_month(target, pretrade[name], month.realized_total, month.rf,
+                                             trade_cost=trade_cost, short_fee_annual=short_fee_annual)
             except PortfolioInsolvency as error:
                 error.args = (f"Selected {name} at {date.date()}, w={selected_w}: {error}",)
                 raise

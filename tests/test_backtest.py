@@ -161,6 +161,38 @@ def test_information_cutoff_mismatch_rejected(market):
         simulate((total, rf, forecasts))
 
 
+def test_cost_replay_keeps_targets_and_recomputes_net_wealth_drift(market):
+    main = simulate(market)
+    free = simulate(market, fixed_selection=main["selection"], trade_cost=0, short_fee_annual=0)
+    pd.testing.assert_series_equal(main["weights"].weight, free["weights"].weight)
+    np.testing.assert_array_equal(main["returns"].w, free["returns"].w)
+    assert free["returns"].trading_cost.eq(0).all()
+    assert free["returns"].borrow_cost.eq(0).all()
+    np.testing.assert_array_equal(free["returns"].net_excess, free["returns"].gross_excess)
+    assert not np.allclose(main["weights"].pretrade_weight, free["weights"].pretrade_weight)
+    # Independently reconstruct all fee-free drifts from previous target positions.
+    total, rf, _ = market
+    for strategy in ("scalar", "heterogeneous"):
+        previous = None
+        previous_date = None
+        for date, group in free["weights"].query("strategy == @strategy").groupby("date"):
+            if previous is not None:
+                returns = total.loc[previous_date].to_numpy()
+                growth = 1 + rf.loc[previous_date] + previous @ (returns - rf.loc[previous_date])
+                np.testing.assert_allclose(group.pretrade_weight, previous * (1 + returns) / growth)
+            previous, previous_date = group.weight.to_numpy(), date
+
+
+def test_explicit_fees_reach_candidate_histories(market):
+    result = simulate(market, trade_cost=.0025, short_fee_annual=.0075)
+    for key in ("returns", "candidates"):
+        frame = result[key]
+        if key == "candidates":
+            frame = frame[frame.status == "active"]
+        np.testing.assert_allclose(frame.trading_cost, .0025 * frame.turnover)
+        np.testing.assert_allclose(frame.borrow_cost, .0075 / 12 * frame.short)
+
+
 def test_selected_portfolio_insolvency_stops_execution(market):
     total, rf, forecasts = market
     total, forecasts = total.copy(), forecasts.copy()
