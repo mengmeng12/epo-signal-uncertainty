@@ -1,0 +1,17 @@
+item,value
+Industries in the data file,49
+First realization month,1942-01-31
+Last realization month,2018-12-31
+Realization months in the period,924
+Missing industry-months in the period (all industries),1656
+Months with a missing return on a held industry,1
+That month,1943-07-31
+Selection years skipped,1944-1948
+Months in the skipped years,60
+Common evaluation months,863
+"Eligible industries at a formation month, minimum",42
+"Eligible industries at a formation month, mean",46.8
+"Eligible industries at a formation month, maximum",49
+First formation month with all industries eligible thereafter,1974-06-30
+Industries in the descriptive statistics,49
+Eligible industry-months in the common evaluation months,40638

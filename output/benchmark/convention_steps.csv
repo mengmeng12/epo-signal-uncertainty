@@ -1,0 +1,7 @@
+step,months,oos_epo_sharpe,change
+"Published result (Table 5, Equity 1)",,0.7900,
+"Published procedure, all months, missing return set to zero",924.0000,0.7971,0.0071
+Drop 1943-07 and 1944-1948,863.0000,0.8238,0.0267
+Use the proposal grid,863.0000,0.8238,-0.0000
+Scale to 10% predicted volatility,863.0000,0.8311,0.0073
+Choose w each January from the preceding 60 months,863.0000,0.7703,-0.0608

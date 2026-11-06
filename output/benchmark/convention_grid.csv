@@ -1,0 +1,5 @@
+positions,selection_of_w,sharpe_published_grid,sharpe_proposal_grid
+Unscaled,"Every month, all earlier months",0.8238,0.8238
+Unscaled,"Each January, preceding 60 months",0.7249,0.7473
+Scaled to 10% predicted volatility,"Every month, all earlier months",0.8289,0.8311
+Scaled to 10% predicted volatility,"Each January, preceding 60 months",0.7649,0.7703
