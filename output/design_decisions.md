@@ -31,7 +31,7 @@ Step 0 record of the shared conventions. Parameter values live in `src/epo_proje
 | Preliminary correction | Q = 0.95 Σ̂ + 0.05 V, V = diag(Σ̂); diagonal unchanged | proposal |
 | Benchmark eligibility | At least 60 consecutive non-missing months ending at t (implies the 12 months for momentum) | proposed |
 | Minimum universe | Skip a formation date with fewer than 5 eligible industries (never binds: 40–49 industries) | proposed |
-| Missing month-t+1 return | An eligible industry whose t+1 return is missing earns 0 that month (1 case) instead of being dropped with hindsight | proposed |
+| Missing month-t+1 return | If an industry held at t has no return in t+1, that month's portfolio returns stay missing; selection years whose 60-month window contains the month are skipped; all portfolios are evaluated over the same common months. One case (Rubbr, 1943-07) removes 1943-07 and 1944–1948, leaving 863 of 924 months | decided (team convention, proposal Appendix A) |
 
 The extension adds its own requirement of 120 completed regression pairs; `eligibility.csv` stores `consecutive_months` so any history rule can be derived without recomputing.
 
@@ -50,22 +50,17 @@ The extension adds its own requirement of 120 completed regression pairs; `eligi
 
 ### Differences from the published results
 
-Over 1942–2018 the out-of-sample EPO earns a Sharpe ratio of 0.751, against 0.79 in Pedersen, Babu and Levine (2021, Table 5, Equity 1). The data, signal, 60-month risk model and 5% correction are the same; the benchmark differs from the published procedure in three conventions. A one-off diagnostic (not part of the pipeline) changed them one at a time:
+Over the 863 common months in 1942–2018 the out-of-sample EPO earns a Sharpe ratio of 0.770, against 0.79 in Pedersen, Babu and Levine (2021, Table 5, Equity 1). The data, signal, 60-month risk model and 5% correction are the same; the benchmark differs from the published procedure in three conventions and in the evaluation months. A one-off diagnostic (not part of the pipeline) changed the conventions one at a time over the same 863 months:
 
 | Positions | Selection of w | Published grid | Proposal grid |
 |---|---|---|---|
-| Unscaled | Every month, all earlier months (published procedure) | 0.797 | 0.797 |
-| Unscaled | Each January, preceding 60 months | 0.709 | 0.730 |
-| Scaled to 10% predicted volatility | Every month, all earlier months | 0.807 | 0.807 |
-| Scaled to 10% predicted volatility | Each January, preceding 60 months (proposal) | 0.745 | 0.751 |
+| Unscaled | Every month, all earlier months (published procedure) | 0.824 | 0.824 |
+| Unscaled | Each January, preceding 60 months | 0.725 | 0.747 |
+| Scaled to 10% predicted volatility | Every month, all earlier months | 0.829 | 0.831 |
+| Scaled to 10% predicted volatility | Each January, preceding 60 months (proposal) | 0.765 | 0.770 |
 
-- **Selection rule (about −0.06).** A Sharpe ratio estimated from 60 months has a standard error near 0.5, larger than the true differences across candidates (0.57 at w = 0 to 0.80 at w = 0.90 for fixed w). The rolling rule therefore often picks weak values: w = 0 in 11 of the 77 selection years 1942–2018, against never below 0.25 with the expanding window.
-- **Volatility scaling (about +0.01).** Equalizing predicted risk across months changes how much each month contributes to the Sharpe ratio; raw MVO is affected most (0.22 unscaled, 0.30 scaled) because near-singular Σ̂ produces extreme unscaled positions in some months.
+- **Selection rule (about −0.06 to −0.08).** A Sharpe ratio estimated from 60 months has a standard error near 0.5, larger than the true differences across candidates (0.59 at w = 0 to 0.83 at w = 0.95 for fixed w). The rolling rule therefore often picks weak values: w = 0 in 11 of the 72 selection years 1942–2018 (1944–1948 have no selection), against never below 0.25 with the expanding window.
+- **Volatility scaling (about +0.01 to +0.02).** Equalizing predicted risk across months changes how much each month contributes to the Sharpe ratio; raw MVO is affected most (0.23 unscaled, 0.32 scaled) because near-singular Σ̂ produces extreme unscaled positions in some months.
 - **Grid (about 0.02 at most).** Dropping 0.10 and 1.00 and adding 0.95 matters only under the rolling rule.
 - **Anchor.** With a single λ, the signal-based anchor and a zero anchor give positions that differ by the positive factor (1 − w), which the volatility scaling removes; the benchmark results do not depend on this choice.
-
-With the published procedure our implementation matches the published Sharpe ratios within 0.03 for every reported portfolio (out-of-sample EPO 0.797 against 0.79).
-
-## Holdout status
-
-Earlier exploratory work by Yuzhen (outside this repository) downloaded data through August 2026 but computed and inspected results only for 1942–2018; no design choice used 2019 or later. The 2019–2025 period has not informed the design so far.
+- **Evaluation months.** With the published procedure, the 863 common months give Sharpe ratios 0.02–0.07 above the published values (out-of-sample EPO 0.824 against 0.79). Evaluating all 924 months instead, with the single missing return set to zero, brings every published-procedure row within 0.03 of the paper (out-of-sample EPO 0.797). Dropping 1944–1948 therefore accounts for part of the gap to the published numbers.
