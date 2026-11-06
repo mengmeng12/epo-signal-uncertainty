@@ -9,6 +9,11 @@ Each portfolio is scaled to 10% annualized predicted volatility under Q_t, and
 w is chosen each January from the preceding 60 months of candidate Sharpe
 ratios. Published Equity 1 values are shown to document differences.
 
+Missing returns: if an industry held at t has no return in month t+1, that
+month's portfolio returns stay missing (nothing is filled). A selection year
+whose 60-month window contains such a month is skipped, and every portfolio is
+evaluated over the same common months.
+
 Outputs: output/replication_table.csv, output/problem_pc_diagnostics.csv,
 output/problem_pc.png.
 """
@@ -70,7 +75,7 @@ def candidate_panel() -> tuple[pd.DataFrame, pd.DataFrame, dict, dict]:
     dates = excess.index
 
     scaled, pc_rows, share_rows = [], [], []
-    audit = {"formation_dates": 0, "missing_next_returns_set_to_zero": 0}
+    audit = {"formation_dates": 0, "months_with_missing_return": []}
     for t, (members, sigma_hat, q) in models.items():
         pos = dates.get_loc(t)
         if pos + 1 >= len(dates):
@@ -78,12 +83,15 @@ def candidate_panel() -> tuple[pd.DataFrame, pd.DataFrame, dict, dict]:
         t1 = dates[pos + 1]
         s = z.loc[t, members].to_numpy()
         r_next = excess.loc[t1, members]
-        audit["missing_next_returns_set_to_zero"] += int(r_next.isna().sum())
-        r = r_next.fillna(0.0).to_numpy()                       # not dropped with hindsight
         audit["formation_dates"] += 1
 
         weights = {"raw_mvo": solve(sigma_hat, s)}
         weights.update({w: epo_weights(q, s, w) for w in cfg.W_GRID})
+        if r_next.isna().any():                                 # leave the month's returns missing
+            audit["months_with_missing_return"].append((str(t1.date()), list(r_next[r_next.isna()].index)))
+            scaled.append({"date": t1, **{k: np.nan for k in weights}})
+            continue
+        r = r_next.to_numpy()
         scaled.append({"date": t1, **{k: scale_to_target_vol(x, q) @ r for k, x in weights.items()}})
 
         rows, shares = _pc_stats(q, s, r, weights)
@@ -104,13 +112,19 @@ def run(make_plot: bool = True) -> dict:
     scaled, pc, shares, audit = candidate_panel()
 
     grid = list(cfg.W_GRID)
-    selection = annual_selection(scaled[grid])
+    selection = annual_selection(scaled[grid])                 # skips windows containing a missing month
     oos = apply_selection(scaled[grid], selection)
+
+    # common evaluation months: every portfolio, including OOS EPO, has a return
+    panel = scaled.assign(oos=oos["return"]).loc[start:end]
+    common = panel.dropna().index
+    audit["evaluation_months"] = len(common)
+    audit["selection_years_skipped"] = [y for y in range(int(start[:4]), int(end[:4]) + 1) if y not in selection.index]
 
     # ---------------------------------------------------------------- replication table
     rows = []
     for key in ["raw_mvo", *grid, "oos"]:
-        series = (oos["return"] if key == "oos" else scaled[key]).loc[start:end]
+        series = panel.loc[common, key]
         rows.append({"portfolio": _label(key), "sharpe": annualized_sharpe(series),
                      "sharpe_published": PUBLISHED_EQUITY1.get(key, np.nan), "months": len(series)})
     table = pd.DataFrame(rows)
@@ -120,7 +134,7 @@ def run(make_plot: bool = True) -> dict:
     table.to_csv(cfg.OUTPUT_DIR / "replication_table.csv", index=False, float_format="%.4f")
 
     # ---------------------------------------------------------------- problem-portfolio diagnostics
-    pc = pc[(pc["date"] >= start) & (pc["date"] <= end)]
+    pc = pc[pc["date"].isin(common)]
     by_group = pc.groupby("group")
     oriented = pc.pivot(index="date", columns="group", values="oriented_return")
     diag = pd.DataFrame({
@@ -129,7 +143,7 @@ def run(make_plot: bool = True) -> dict:
         "ex_ante_sharpe_relative": by_group["ex_ante_sharpe_rel"].mean(),
         "realized_sharpe_signal_direction": oriented.apply(annualized_sharpe),
     })
-    months = list(oos.loc[start:end].index)
+    months = list(common)
     diag["risk_share_mvo_q"] = np.mean([shares[m][0.0] for m in months], axis=0)
     diag["risk_share_oos_epo"] = np.mean([shares[m][oos.at[m, "selected"]] for m in months], axis=0)
     diag.index.name = "eigenvalue_group"
