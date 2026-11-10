@@ -11,6 +11,8 @@ Under equation~\eqref{eq:model}, $\Cov(\mu,s)=\tau\Sigma$ and $\Var(s)=\tau\Sigm
 \end{align}
 Taking $x=x^{S,*}$ yields equation~\eqref{eq:loss}. Subtracting and adding $\bar U(x^{S,*}\mid s)$ decomposes the loss of the mean-scalar allocation into compression and choice components. This identity is also checked numerically on the simulated draws.
 
+\input{sections/scalar_sufficiency}
+
 \subsection{Scalar search and linear algebra}
 The simulation searches in $w=\kappa/(1+\kappa)$, evaluating the zero-position limit at $w=1$ explicitly. For a grid maximum, the neighboring grid points bracket the refinement interval, clipped to $[0,1]$. Golden-section refinement stops when the interval width is at most $10^{-10}$; the refined result and both endpoints are compared. The allocation uses the factor $(1-w)/\gamma$ when represented with the inverse of $(1-w)\Sigma+wV$. The numerical oracle denotes this implemented search over the scalar family. Linear systems are solved directly; a least-squares fallback handles a singular raw benchmark matrix. A constant regression predictor, with centered sum of squares at most $10^{-14}$, produces an intercept-only fit. Identical bootstrap predictions give exactly zero estimated variance.
 

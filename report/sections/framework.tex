@@ -12,7 +12,7 @@ where $\tau>0$ sets the prior scale and $\Lambda$ is the signal-error covariance
 \bar U(x\mid s)=x'm(s)-\frac{\gamma}{2}x'\Sigma x.
 \label{eq:utility}
 \end{equation}
-Thus $\Sigma$ is the risk matrix in the specified criterion. Conditional-mean uncertainty enters through the forecast $m(s)$.
+We hold the risk matrix $\Sigma$ fixed to isolate how uncertainty changes the conditional-mean forecast $m(s)$ and the resulting allocation. Equation~\eqref{eq:utility} is the decision criterion throughout the oracle experiment; it is the conditional expectation of a mean--variance objective with that fixed risk matrix.
 
 Gaussian conditioning gives $m(s)=\tau\Sigma(\tau\Sigma+\Lambda)^{-1}s$. Setting the gradient of \eqref{eq:utility} to zero yields
 \begin{equation}
@@ -45,4 +45,4 @@ A(s)=\frac{\sum_{i=1}^n\sigma_i^2q_i^2(h_i-1)^2}
 {\sum_{i=1}^n\sigma_i^2q_i^2}.
 \label{eq:alignment}
 \end{equation}
-The statistic weights squared deviations in relative uncertainty by the variance-scaled squared positions of the mean-scalar portfolio. We compare losses across groups of draws with different $A(s)$. For the same nonzero exposure, $\kappa_{\mathrm{eff}}(q)=q'\Lambda q/(\tau q'Vq)$ matches its uncertainty penalty. That equality concerns the specified exposure; the compression comparison evaluates the complete optimized allocation.
+The statistic weights squared deviations in relative uncertainty by the variance-scaled squared positions of the mean-scalar portfolio. We compare losses across groups of draws with different $A(s)$. Appendix~\ref{app:scalar-sufficiency} derives conditions for exact agreement on held exposures and an upper bound on proportional utility loss. It also shows that, near uniform uncertainty, the loss of the mean scalar is second order in the departure from uniformity. These results characterize when scalar compression can be economically small.

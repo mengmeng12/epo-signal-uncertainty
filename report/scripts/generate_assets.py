@@ -192,50 +192,67 @@ def make_tables(d):
         r"Forecast accuracy uses 28,104 and 4,116 eligible industry-months, respectively. $R^2$ compares pooled squared errors with the rolling historical-mean forecast. Rank correlation compares forecasts with next-month excess returns. Uncertainty dispersion is the monthly population coefficient of variation of $\widehat h$, averaged over time. Intervals use 1,000 whole-month block resamples of length 12.",
     )
     p = read("performance_table")
-    rows = []
-    for period in periods:
-        sub = p[p.period == period].set_index("strategy")
-        rows.append([r"\multicolumn{3}{l}{\textit{" + period.replace("-", "--") + "}}"])
-        for label, col, digits in [
-            ("Annual net mean (\\%)", "net_excess_mean_pct_year", 2),
-            ("Annual volatility (\\%)", "volatility_pct_year", 2),
-            ("Net Sharpe ratio", "net_sharpe", 3),
-            ("Annual net certainty equivalent (bp)", "net_ce_bp_year", 2),
-            (
-                "Monthly expected shortfall, 95\\% (\\%)",
-                "es95_net_excess_loss_pct_month",
-                2,
-            ),
-            ("Maximum drawdown (\\%)", "max_drawdown_pct", 2),
-            ("Mean monthly turnover", "mean_turnover_per_month", 3),
-            ("Mean gross exposure", "mean_gross", 3),
-        ]:
+    dep = read("deployment_sensitivity")
+    rows = [
+        ["", r"\multicolumn{2}{c}{1970--2018}", r"\multicolumn{2}{c}{2019--2025}"],
+        ["", "Scalar", "Heterog.", "Scalar", "Heterog."],
+    ]
+    order = [
+        (period, strategy)
+        for period in periods
+        for strategy in ("scalar", "heterogeneous")
+    ]
+    metrics = [
+        (r"Annual net mean (\%)", "net_excess_mean_pct_year", 2),
+        (r"Annual volatility (\%)", "volatility_pct_year", 2),
+        ("Net Sharpe ratio", "net_sharpe", 3),
+        ("Annual net utility (bp)", "net_ce_bp_year", 2),
+        (r"Monthly tail loss, 95\% (\%)", "es95_net_excess_loss_pct_month", 2),
+        (r"Maximum drawdown (\%)", "max_drawdown_pct", 2),
+        ("Mean monthly turnover", "mean_turnover_per_month", 3),
+        ("Mean gross exposure", "mean_gross", 3),
+    ]
+    for title, frame, primary in [
+        (r"A. Primary: fixed $\gamma=3$", p, True),
+        (r"B. Sensitivity: 10\% predicted-volatility target; gross cap 3", dep, False),
+    ]:
+        indexed = frame.set_index(["period", "strategy"])
+        rows.append([r"\multicolumn{5}{l}{\textit{" + title + "}}"])
+        for label, col, digits in metrics:
             rows.append(
-                [label]
-                + [f"{sub.loc[k,col]:.{digits}f}" for k in ("scalar", "heterogeneous")]
+                [label] + [f"{indexed.loc[key,col]:.{digits}f}" for key in order]
             )
-        v = sub.loc["heterogeneous"]
+        delta = [indexed.loc[(period, "heterogeneous")] for period in periods]
         rows.append(
-            [
-                r"Heterogeneous minus scalar, annual utility (bp)",
-                "",
-                f"{v.delta_ce_bp_year:.2f}",
+            [r"Annual $\Delta\mathrm{CE}$ (bp)"]
+            + [
+                r"\multicolumn{2}{c}{" + f"{row.delta_ce_bp_year:.2f}" + "}"
+                for row in delta
             ]
         )
-        rows.append(
-            [
-                "95\\% paired block interval",
-                "",
-                f"[{v.ci_lower_bp_year:.2f}, {v.ci_upper_bp_year:.2f}]",
-            ]
-        )
+        if primary:
+            rows.append(
+                [r"95\% paired block interval"]
+                + [
+                    r"\multicolumn{2}{c}{["
+                    + f"{row.ci_lower_bp_year:.2f}, {row.ci_upper_bp_year:.2f}"
+                    + "]}"
+                    for row in delta
+                ]
+            )
+        else:
+            rows.append(
+                ["Months with binding cap"]
+                + [str(int(indexed.loc[key, "cap_months"])) for key in order]
+            )
     table(
         "performance",
-        "Matched portfolio performance after costs.",
+        "Matched net performance under two exposure policies.",
         "tab:performance",
-        ["Statistic", "Scalar", "Heterogeneous"],
+        ["Statistic", r"\multicolumn{4}{c}{Evaluation period and strategy}"],
         rows,
-        r"Risk aversion is 3. Trading cost is 10 bp per dollar of full traded notional; the short fee is 50 bp per year. Expected shortfall is a monthly net-excess-return loss. Drawdown uses total net wealth. Confidence intervals use 1,000 paired 12-month block resamples. Positions continue through the 2019 boundary.",
+        r"Each period contains 588 or 84 months. Certainty equivalents use risk aversion 3 in both panels; $\Delta\mathrm{CE}$ is heterogeneous minus scalar. Trading cost is 10 bp per dollar of full traded notional and the annual short fee is 50 bp. Tail loss is monthly expected shortfall of net excess returns; drawdown uses total net wealth. Panel A intervals use 1,000 paired 12-month block resamples. Panel B retains the primary selected penalty sequence with its own position drift and costs; its intervals are not estimated. The volatility target uses predicted risk under the common matrix. Positions continue through the 2019 boundary.",
+        "lrrrr",
     )
     rob = d["robustness_summary"]
     dep = read("deployment_sensitivity")

@@ -1,0 +1,56 @@
+\subsection{When is a scalar adjustment sufficient?}
+\label{app:scalar-sufficiency}
+The nonnegative loss identity establishes the direction of the oracle comparison. To assess whether the restriction matters economically, we need conditions controlling its magnitude. The following consequences of the same quadratic objective provide such conditions. They hold conditional on the observed signal and the specified risk and uncertainty matrices.
+
+\paragraph{Exact agreement on relevant exposures.}
+For any finite $\kappa\geq0$, define the scalar position $q_\kappa=x^S(\kappa)$, the scalar system matrix $B_\kappa=\Sigma+\kappa V$, the penalty difference $D_\kappa=\Lambda/\tau-\kappa V$, and the heterogeneous system matrix $M=\Sigma+\Lambda/\tau=B_\kappa+D_\kappa$. Both system matrices are positive definite. Their first-order conditions give
+\begin{equation}
+q_\kappa-x^H=B_\kappa^{-1}D_\kappa x^H
+             =M^{-1}D_\kappa q_\kappa.
+\label{eq:position-gap}
+\end{equation}
+For example, $B_\kappa q_\kappa=Mx^H=s/\gamma$ implies the first equality; rearranging $Mq_\kappa=s/\gamma+D_\kappa q_\kappa$ gives the second. Consequently, $q_\kappa=x^H$ if and only if $D_\kappa q_\kappa=0$.
+
+In the diagonal uncertainty specification, this condition becomes
+\begin{equation}
+\sigma_i^2\left(\frac{\lambda}{\tau}h_i-\kappa\right)q_{\kappa,i}=0
+\quad\text{for every }i.
+\label{eq:exact-scalar}
+\end{equation}
+Uniform uncertainty gives agreement for every signal at $\kappa=\lambda/\tau$. For a particular signal, agreement also occurs when all nonzero scalar positions have the same uncertainty level matched by $\kappa$. Uncertainty differences on zero positions then leave the allocation unchanged. Small values of $D_\kappa q_\kappa$ give a small position gap when multiplication by $M^{-1}$ does not greatly amplify them. This condition concerns the interaction of uncertainty and exposure, including the risk-matrix geometry.
+
+\paragraph{A sufficient bound on proportional utility loss.}
+Let $L_\kappa=\bar U(x^H\mid s)-\bar U(q_\kappa\mid s)$ denote loss at the specified scalar, and let $U_H=\bar U(x^H\mid s)$. At the optimum, $U_H=\gamma x^{H\prime}\Sigma x^H/2$. For $s\ne0$, this quantity is positive. Define the symmetric positive-definite square root $\Sigma^{1/2}$, its inverse $\Sigma^{-1/2}$, the risk-scaled position $y=\Sigma^{1/2}x^H$, and
+\begin{equation}
+T_\kappa=\Sigma^{1/2}B_\kappa^{-1}D_\kappa\Sigma^{-1/2},
+\qquad \eta_\kappa=\|T_\kappa\|_2,
+\end{equation}
+where the vector norm $\|\cdot\|_2$ is Euclidean and the matrix norm is its induced operator norm. Substituting equation~\eqref{eq:position-gap} into the loss identity yields
+\begin{equation}
+0\leq\frac{L(s)}{U_H}\leq\frac{L_\kappa}{U_H}
+ =\frac{\|T_\kappa y\|_2^2}{\|y\|_2^2}
+ \leq\eta_\kappa^2.
+\label{eq:scalar-bound}
+\end{equation}
+The first inequality compares the best scalar with any specified scalar; the last follows from the operator norm. For a chosen proportional-loss tolerance $\epsilon>0$, $\eta_\kappa\leq\sqrt{\epsilon}$ is therefore a sufficient condition for the best scalar to be within $\epsilon$ of heterogeneous utility. The signal-specific middle expression can be much smaller than the uniform upper bound. Large uncertainty differences need not be costly if the held risk-scaled position has little exposure to the directions in which $T_\kappa$ is large. For $s=0$, both allocations and the absolute loss are zero.
+
+\paragraph{Small departures from uniform uncertainty.}
+Set $\bar\kappa=\lambda/\tau$, $B=\Sigma+\bar\kappa V$, and $q=B^{-1}s/\gamma$. Fix a diagonal matrix $J=\diag(d_1,\ldots,d_n)$ with $\sum_i d_i=0$. Let $h_i(\theta)=1+\theta d_i$, restricting the scalar perturbation $\theta$ so every $h_i(\theta)>0$. Define $D_0=\bar\kappa V^{1/2}JV^{1/2}$. The heterogeneous matrix is then $B+\theta D_0$. A local inverse expansion at $\theta=0$ gives
+\begin{align}
+x^H(\theta)-q&=-\theta B^{-1}D_0q+O(\theta^2),\\
+L_{\bar\kappa}(\theta)
+&=\frac{\gamma\theta^2}{2}
+q'D_0B^{-1}\Sigma B^{-1}D_0q+O(\theta^3).
+\label{eq:local-loss}
+\end{align}
+All other inputs, including $s$, remain fixed in this expansion. The position difference is first order, while the utility loss is second order because the objective is locally flat at its optimum. Reoptimizing the scalar can only reduce this loss. Thus modest uncertainty heterogeneity can have a still smaller utility cost. Separately, multiplying the signal by a constant multiplies both positions by that constant and the absolute loss by its square; proportional loss need not fall. These statements distinguish a small dollar-equivalent effect from a small fraction of optimal utility.
+
+\paragraph{Estimated heterogeneity and practical relevance.}
+Hold $s$, $\Sigma$ and $\gamma$ fixed, and let $\widehat x^H$ be a feasible position obtained from an estimated positive-semidefinite uncertainty matrix. Evaluate every position using the true conditional objective. Define its estimation penalty as $P=\gamma(\widehat x^H-x^H)'\Sigma(\widehat x^H-x^H)/2$. Completing the quadratic once more gives
+\begin{equation}
+\bar U(\widehat x^H\mid s)-\bar U(q_\kappa\mid s)=L_\kappa-P.
+\label{eq:estimation-tradeoff}
+\end{equation}
+Estimated heterogeneity improves utility when its estimation penalty is smaller than the scalar restriction cost. The same comparison holds in conditional expectation over an estimator's sampling distribution. This provides a mathematical rationale for retaining a scalar when its approximation loss is small relative to the error introduced by estimating additional uncertainty structure. It does not require the true uncertainties to be identical.
+
+Equations~\eqref{eq:scalar-bound}--\eqref{eq:estimation-tradeoff} concern model utility and a specified economic tolerance. An empirical confidence interval addresses sampling uncertainty in a performance estimate. A confidence interval containing zero does not establish that the bound is small or that the methods are economically equivalent. The appendix supplies conditions under which small differences are plausible; the historical evaluation reports the evidence for incremental net utility under the implemented rule.
