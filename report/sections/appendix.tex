@@ -1,0 +1,96 @@
+\section{Derivations and numerical implementation}
+\label{app:math}
+\setcounter{table}{0}\setcounter{figure}{0}
+\subsection{Posterior allocation and the loss identity}
+Under equation~\eqref{eq:model}, $\Cov(\mu,s)=\tau\Sigma$ and $\Var(s)=\tau\Sigma+\Lambda$. The Gaussian conditional mean is therefore $m=\tau\Sigma(\tau\Sigma+\Lambda)^{-1}s$. Multiplying by $\Sigma^{-1}/\gamma$ gives equation~\eqref{eq:heterogeneous}; no commutation of $\Sigma$ and $\Lambda$ is needed. For any position vector $x$, the first-order condition $m=\gamma\Sigma x^H$ implies
+\begin{align}
+\bar U(x^H\mid s)-\bar U(x\mid s)
+&=(x^H-x)'\gamma\Sigma x^H
+ -\frac{\gamma}{2}\bigl(x^{H\prime}\Sigma x^H-x'\Sigma x\bigr)\notag\\
+&=\frac{\gamma}{2}(x^H-x)'\Sigma(x^H-x).
+\end{align}
+Taking $x=x^{S,*}$ yields equation~\eqref{eq:loss}. Subtracting and adding $\bar U(x^{S,*}\mid s)$ decomposes the loss of the mean-scalar allocation into compression and choice components. This identity is also checked numerically on the simulated draws.
+
+\subsection{Scalar search and linear algebra}
+The simulation searches in $w=\kappa/(1+\kappa)$, evaluating the zero-position limit at $w=1$ explicitly. For a grid maximum, the neighboring grid points bracket the refinement interval, clipped to $[0,1]$. Golden-section refinement stops when the interval width is at most $10^{-10}$; the refined result and both endpoints are compared. The allocation uses the factor $(1-w)/\gamma$ when represented with the inverse of $(1-w)\Sigma+wV$. The numerical oracle denotes this implemented search over the scalar family. Linear systems are solved directly; a least-squares fallback handles a singular raw benchmark matrix. A constant regression predictor, with centered sum of squares at most $10^{-14}$, produces an intercept-only fit. Identical bootstrap predictions give exactly zero estimated variance.
+
+\subsection{Principal-component statistics}
+Suppress the formation-date subscript and write $R=V^{-1/2}QV^{-1/2}$. Let $d_k$ and $p_k$ denote its ordered eigenvalues and corresponding unit eigenvectors, for $k=1,\ldots,n$. The realized component return is $a_k=p_k'V^{-1/2}r^e_{t+1}$, and the projected signal is $b_k=p_k'V^{-1/2}z_t$. Component $k$ belongs to group $1+\lfloor5(k-1)/n\rfloor$. The group risk ratio is the square root of the time average of within-group means of $a_k^2/d_k$. It uses an uncentered second moment. The signal-implied statistic averages $|b_k|/\sqrt{d_k}$ within a group and divides by the same month's all-component mean. Realized performance uses the annualized Sharpe ratio of the monthly group mean of $\operatorname{sign}(b_k)a_k/\sqrt{d_k}$. For positions $x$, component $k$ contributes $d_k(p_k'V^{1/2}x)^2$ to predicted variance; group shares are normalized each month before averaging.
+
+\section{Simulation and estimator-calibration details}
+\label{app:simulation}
+\setcounter{table}{0}\setcounter{figure}{0}
+\subsection{Profile generation and Monte Carlo summaries}
+For target coefficient of variation $c>0$, draw independent standard normals $v_i$, set $\ell=\sqrt{\log(1+c^2)}$ and generate $h_i$ proportional to $\exp(\ell v_i-\ell^2/2)$, normalized to mean one. Set $h_i=1$ when $c=0$. Profiles are drawn before the common return and signal-error innovations. The simulation seed is 20261023. A mean-loss standard error is the sample standard deviation across signal draws divided by the square root of the draw count; the displayed interval is the mean plus or minus 1.96 standard errors. Alignment groups use a stable ascending sort and equal-count splitting. Table~\ref{tab:simulation} reports both actual and target dispersions.
+\input{generated/table_simulation}
+
+\subsection{Calibration data-generating process}
+Let $e_{i,k+1}$ be standard-normal return innovations, independent over time and correlated 0.30 across industries. Let $\xi_{i,k+1}$ be independent standard normals, independent of all return innovations. The synthetic predictor starts at $z_{i,0}=s_z v_{i,0}$, where $s_z=0.056$ and the $v_{i,0}$ are independent standard normals. With persistence $\phi=0.92$ and feedback $f\in\{0,0.4\}$, generate
+\begin{align}
+z_{i,k+1}&=\phi z_{i,k}+s_z\sqrt{1-\phi^2}
+       \left(fe_{i,k+1}+\sqrt{1-f^2}\xi_{i,k+1}\right),\\
+r^e_{i,k+1}&=a+bz_{i,k}+\nu_i e_{i,k+1},
+\end{align}
+where $a=0.005$, $b=0.10$, and $\nu_i$ is equally spaced between 0.04 and 0.08 across the 49 industries. Each history provides pairs $k=0,\ldots,120$. We train on the first 120 and forecast using $z_{i,120}$, whose true next-return conditional mean is $a+bz_{i,120}$. Current predictors remain independent of the next return innovation in both feedback designs. Relative uncertainty uses the sample variance of the latest 60 training responses, matching the empirical estimator.
+
+For zero feedback, define $\bar z_i$ as the mean training predictor and $S_{zz,i}=\sum_{k=0}^{119}(z_{i,k}-\bar z_i)^2$. The exact conditional variance of the fitted-mean error is
+\begin{equation}
+v_i^{\mathrm{reg}}=\nu_i^2\left[\frac{1}{120}
+ +\frac{(z_{i,120}-\bar z_i)^2}{S_{zz,i}}\right].
+\end{equation}
+With feedback, conditioning on the complete predictor history changes the relationship between predictors and training residuals. We retain this formula as an analytical reference, and assess actual calibration using errors against the known mean. The rank reference for relative uncertainty is $v_i^{\mathrm{reg}}/(b^2s_z^2+\nu_i^2)$.
+
+The calibration seed is 20261101, with separate child streams for histories and bootstrap sampling. Innovations and bootstrap dates are paired across feedback designs. Coverage is computed for normal intervals centered on the fitted mean with standard error $\sqrt{u_i}$, and for empirical percentile intervals of bootstrap predictions, at nominal 90\% and 95\% levels. We evaluate 49,000 industry-history observations per design. Mean-statistic standard errors aggregate centered observations within each independent history before squaring and summing; ratio standard errors apply the same calculation to the linearized ratio. Rank-correlation standard errors use the dispersion across histories. Table~\ref{tab:calibration} reports the aggregate quantities.
+\input{generated/table_calibration}
+\FloatBarrier
+
+\section{Data construction and replication discrepancies}
+\label{app:data}
+\setcounter{table}{0}\setcounter{figure}{0}
+The source archives were downloaded on October 23, 2026 and identify the CRSP vintage as August 2026. The industry returns follow the French Data Library's industry assignments and value-weighting convention \citep{frenchdata}. Original archives, processed returns and the source manifest accompany the research code. The benchmark contains 924 calendar months from January 1942 through December 2018. The file has 1,656 missing industry-months in that interval, many of which are excluded by formation-date eligibility. One missing realized return affects an industry held by the benchmark: Rubbr in July 1943. That portfolio month remains missing. The January selection windows for 1944--1948 therefore fail the complete-history requirement, removing another 60 months. The common evaluation sample has 863 months. Eligible industries range from 42 to 49, with mean 46.8 across formation dates. All 49 remain eligible from June 1974 onward.
+
+\subsection{Accounting for 0.79 versus 0.77}
+The primary replication is a reproduction under the project's stated conventions. Table~\ref{tab:conventions} isolates a sequence of convention changes on the current data vintage. A diagnostic implementation of monthly expanding-history selection on the published grid, without monthly volatility targeting and with the single held missing return set to zero, produces a Sharpe ratio of 0.7971 over all 924 months. Restricting evaluation to the project's common months raises it to 0.8238. Changing to the project grid leaves that rounded result unchanged. Scaling positions to 10\% predicted volatility produces 0.8311, and changing to January selection from the preceding 60 months produces 0.7703.
+
+This accounting attributes the largest downward step along the chosen path to the selection-window convention. It does not identify a unique additive cause for every difference from the published result: the sequence is order-dependent, and the historical data vintage also differs. The zero-filled calculation is confined to this diagnostic exercise. The primary result retains missing held returns and uses the common sample described above. The full convention cross-comparison is available in the machine-readable benchmark results.
+\input{generated/table_conventions}
+\reportfigure{sample_overview.pdf}{Benchmark coverage and industry return distributions. The left panel shows formation-date eligibility and marks the missing held return and the skipped selection years. The other panels summarize each industry's eligible excess returns within the common evaluation months. Mean returns and volatility are annualized.}{fig:benchmark-sample}{1}
+\reportfigure{selected_w.pdf}{Annual benchmark penalty selection. Each January's choice maximizes gross Sharpe ratio over the preceding 60 complete months. Monthly positions are scaled to 10\% predicted volatility. The vertical spacing represents grid categories rather than equal numerical distances; shaded years have no admissible selection window.}{fig:benchmark-w}{1}
+\reportfigure{sample_coverage.pdf}{Coverage of the empirical extension. The left panel compares observed industry returns with forecast-eligible industries. The right panel gives annualized volatility distributions using each industry's eligible observations in each evaluation period. The earlier period contains 28,104 eligible industry-months and the later period 4,116.}{fig:sample}{1}
+\FloatBarrier
+
+\section{Forecast and relative-uncertainty diagnostics}
+\label{app:forecast}
+\setcounter{table}{0}\setcounter{figure}{0}
+Monthly forecast deciles use a stable ascending sort and near-equal counts. The plots report equal-weight mean forecasts and next-month realized excess returns in each group. The predictive $R^2$ in Table~\ref{tab:forecast} is one minus total squared forecast error divided by total squared error of the rolling historical-mean forecast, pooled over eligible industry-months. The historical mean uses the same 120 training responses. The corresponding 95\% intervals are $[-0.0135,-0.0041]$ and $[-0.0200,-0.0047]$ in the two periods. Rank correlations are calculated within a month and then averaged over months.
+
+The uncertainty profile is normalized monthly, so cross-sectional means equal one by construction. Dispersion uses the population standard deviation within a month. Persistence compares ranks on the common industry intersection at the two dates, requiring at least three industries and nonconstant ranks. Monthly diagnostics also compare uncertainty ranks with absolute forecast and asset-volatility ranks. The empirical uncertainty-estimator seed is 20261029, combined with formation month in year-month integer form; evaluation resampling uses seed 20261105. Diagnostic confidence intervals use whole-month blocks, with seed 20261105 combined with a diagnostic identifier and the starting year of the evaluation period.
+\reportfigure{forecast_quality.pdf}{Historical forecast diagnostics. Upper panels compare forecast and realized mean excess returns by forecast decile, before costs, with 95\% whole-month moving-block intervals for realized means. The lower panel is the trailing 60-month average cross-sectional Spearman correlation between forecasts and realized returns. Intervals use 1,000 draws with 12-month blocks and are pointwise.}{fig:forecast}{1}
+\reportfigure{reliability_diagnostics.pdf}{Dispersion and persistence of estimated relative uncertainty. The upper panel shows the monthly coefficient of variation. The middle panel compares uncertainty ranks at one- and twelve-month lags. The lower panel compares uncertainty ranks with absolute forecast and asset-volatility ranks. The bottom two panels display trailing twelve-month averages. Larger uncertainty values imply a stronger relative penalty.}{fig:reliability}{1}
+\reportfigure{reliability_heatmap.pdf}{Annual mean relative uncertainty by industry. Each cell is the arithmetic mean of monthly normalized uncertainty values. The color scale is logarithmic and saturates outside 0.25 to 4; gray denotes unavailable observations. Industry coverage follows the primary forecast eligibility rule.}{fig:heatmap}{.94}
+\FloatBarrier
+
+\section{Selection and portfolio transmission}
+\label{app:holdings}
+\setcounter{table}{0}\setcounter{figure}{0}
+All candidate accounts start in January 1960, using available historical forecasts. The unpenalized candidate becomes insolvent in June 1960 and the $w=0.25$ candidate in December 1961; both remain excluded from later selection. At each annual decision, a candidate must still be alive and have 60 complete prior monthly net returns. Figure~\ref{fig:selection} shows selected values and the eligible historical scores across the 56 evaluation years. The candidate-exit and selection records are retained separately from the displayed aggregate results.
+
+To describe portfolio composition, define gross exposure $g^j_t=\sum_i|x^j_{i,t}|$ for strategy $j\in\{S,H\}$. Gross-normalized composition distance is $\sum_i|x^H_{i,t}/g^H_t-x^S_{i,t}/g^S_t|$. Risk-direction correlation is
+\begin{equation}
+\rho_{Q,t}=\frac{x_t^{S\prime}Q_t x_t^H}
+{\sqrt{x_t^{S\prime}Q_t x_t^S}\sqrt{x_t^{H\prime}Q_t x_t^H}}.
+\end{equation}
+A positive rescaling alone gives distance zero and correlation one. Figure~\ref{fig:transmission} reports both measures alongside gross exposure and predicted volatility. The underlying monthly holdings record retains entering and exiting industries, including zero target positions needed to account for liquidation trades.
+\reportfigure{selection_diagnostics.pdf}{Annual common-penalty selection in the empirical extension. The upper panel shows the selected penalty. The lower panel shows annualized net certainty equivalents over the preceding 60 months for eligible scalar candidates. Color limits use the fifth and ninety-fifth percentiles of displayed scores; excluded candidates are omitted. Both strategies use the selected scalar penalty.}{fig:selection}{1}
+\reportfigure{portfolio_transmission.pdf}{Transmission from the uncertainty profile to portfolio holdings. The upper panels show gross exposure and annual predicted volatility under the common risk matrix. The lower panels show gross-normalized composition distance and risk-direction correlation. These are the primary fixed-risk-aversion portfolios before deployment targeting and capping.}{fig:transmission}{1}
+\FloatBarrier
+
+\section{Performance paths and sensitivity intervals}
+\label{app:performance}
+\setcounter{table}{0}\setcounter{figure}{0}
+Figure~\ref{fig:equity} displays total net wealth and drawdown for the primary strategies. Each period is rebased to initial wealth one for presentation; portfolio positions continue through the boundary. Table~\ref{tab:intervals} and Figure~\ref{fig:intervals} give paired uncertainty intervals under alternative return-block lengths. Figure~\ref{fig:robust} reports the cost and entry-rule intervals using twelve-month blocks. The deployment exercise in Table~\ref{tab:robustness} is reported as a point-estimate sensitivity calculation.
+\input{generated/table_intervals}
+\reportfigure{equity_curves.pdf}{Total net wealth and drawdown of the primary matched portfolios. Returns include risk-free cash financing, 10 basis points per dollar traded and a 50-basis-point annual short fee. Each display period is rebased independently; underlying holdings and cost accounting continue in January 2019.}{fig:equity}{1}
+\reportfigure{delta_ce_intervals.pdf}{Block-length sensitivity of the heterogeneous-minus-scalar annual net certainty equivalent difference. Each horizontal interval is the 2.5th to 97.5th percentile of 1,000 paired moving-block resamples of realized net returns. The central marker is the original-sample estimate, and the dashed line marks zero. Units are annual basis points.}{fig:intervals}{1}
+\reportfigure{robustness.pdf}{Cost and admission sensitivity with paired uncertainty intervals. Cost scenarios retain the primary penalty sequence and recompute position drift; the annual short fee remains 50 basis points. Requiring 60 forecast-ready months reruns candidate histories and selection. Intervals use 1,000 paired twelve-month block resamples and are expressed in annual utility basis points.}{fig:robust}{1}
+\FloatBarrier

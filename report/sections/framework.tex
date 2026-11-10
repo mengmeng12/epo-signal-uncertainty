@@ -1,0 +1,48 @@
+\section{Theoretical Framework}
+\label{sec:framework}
+\subsection{Signal uncertainty and portfolio choice}
+Consider $n$ risky assets. Let $x\in\R^n$ denote dollar positions per unit of wealth, $\mu\in\R^n$ their unknown monthly expected excess returns, and $\Sigma\in\R^{n\times n}$ a known positive-definite return covariance matrix. Define $\sigma_i^2=\Sigma_{ii}$ and $V=\diag(\sigma_1^2,\ldots,\sigma_n^2)$. The signal $s\in\R^n$ follows
+\begin{equation}
+\mu\sim N(0,\tau\Sigma),\qquad s=\mu+\varepsilon,\qquad
+\varepsilon\sim N(0,\Lambda),\qquad \mu\perp\varepsilon,
+\label{eq:model}
+\end{equation}
+where $\tau>0$ sets the prior scale and $\Lambda$ is the signal-error covariance. We use a zero anchor and the conditional mean $m(s)=\E[\mu\mid s]$. For risk aversion $\gamma>0$, the criterion is
+\begin{equation}
+\bar U(x\mid s)=x'm(s)-\frac{\gamma}{2}x'\Sigma x.
+\label{eq:utility}
+\end{equation}
+Thus $\Sigma$ is the risk matrix in the specified criterion. Conditional-mean uncertainty enters through the forecast $m(s)$.
+
+Gaussian conditioning gives $m(s)=\tau\Sigma(\tau\Sigma+\Lambda)^{-1}s$. Setting the gradient of \eqref{eq:utility} to zero yields
+\begin{equation}
+x^H=\frac{1}{\gamma}\Sigma^{-1}m(s)
+=\frac{1}{\gamma}(\Sigma+\Lambda/\tau)^{-1}s.
+\label{eq:heterogeneous}
+\end{equation}
+Positive definiteness makes this the unique maximizer. Equation~\eqref{eq:heterogeneous} uses the uncertainty-adjusted allocation underlying EPO \citep{pedersen2021}; the Gaussian specification and fixed-criterion comparisons define the experiment in this paper.
+
+We parameterize relative uncertainty by positive numbers $h_i$ with $n^{-1}\sum_i h_i=1$, and set $\Lambda=\lambda\diag(\sigma_i^2h_i)$, where $\lambda>0$ is the common scale. The scalar family is
+\begin{equation}
+x^S(\kappa)=\frac{1}{\gamma}(\Sigma+\kappa V)^{-1}s,
+\qquad \kappa\geq0.
+\label{eq:scalar}
+\end{equation}
+Uniform $h_i=1$ gives $x^H=x^S(\lambda/\tau)$. To connect the penalty to the usual shrinkage parameter, define $w=\kappa/(1+\kappa)$. Then $\Sigma+\kappa V=[(1-w)\Sigma+wV]/(1-w)$. At fixed $\gamma$, the corresponding factor $(1-w)$ in positions must be retained. This scale convention is also used in the empirical extension.
+
+\subsection{Compression loss and exposure alignment}
+The oracle scalar parameter, denoted $\kappa^*(s)$, maximizes $\bar U(x^S(\kappa)\mid s)$ over $\kappa\geq0$, including the limiting zero position. The oracle knows $\Sigma$, $\Lambda$, $\tau$ and the observed $s$. Neither allocation observes the sampled $\mu$. Define $x^{S,*}=x^S(\kappa^*)$ and $\Delta x=x^H-x^{S,*}$. Completing the quadratic in \eqref{eq:utility} gives
+\begin{equation}
+L(s)=\bar U(x^H\mid s)-\bar U(x^{S,*}\mid s)
+=\frac{\gamma}{2}\Delta x'\Sigma\Delta x\geq0.
+\label{eq:loss}
+\end{equation}
+This compression loss is the utility cost of the scalar restriction after optimizing its parameter. For the mean-uncertainty choice $\bar\kappa=\lambda/\tau$, define the additional choice loss as $\bar U(x^{S,*}\mid s)-\bar U(x^S(\bar\kappa)\mid s)$. The total loss of the mean scalar is the sum of these two terms. Appendix~\ref{app:math} provides the derivation and numerical search procedure.
+
+Dispersion alone does not describe where uncertainty differences enter a portfolio. Let $q=x^S(\bar\kappa)$, and define the exposure-alignment statistic
+\begin{equation}
+A(s)=\frac{\sum_{i=1}^n\sigma_i^2q_i^2(h_i-1)^2}
+{\sum_{i=1}^n\sigma_i^2q_i^2}.
+\label{eq:alignment}
+\end{equation}
+The statistic weights squared deviations in relative uncertainty by the variance-scaled squared positions of the mean-scalar portfolio. We compare losses across groups of draws with different $A(s)$. For the same nonzero exposure, $\kappa_{\mathrm{eff}}(q)=q'\Lambda q/(\tau q'Vq)$ matches its uncertainty penalty. That equality concerns the specified exposure; the compression comparison evaluates the complete optimized allocation.
