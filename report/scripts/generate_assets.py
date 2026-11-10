@@ -358,6 +358,30 @@ def make_tables(d):
         ],
         r"The sequence changes one implemented convention at a time on the current data vintage. It is an order-dependent accounting exercise. The zero-filled row is a diagnostic scenario; the primary replication does not fill a held missing return. The first row is from \citet{pedersen2021}.",
     )
+    f = read("benchmark/convention_steps_fixed")
+    labels = [
+        "Published Equity 1 result",
+        "Published procedure; zero-filled month",
+        "Common evaluation months",
+        "10\\% predicted-volatility scaling",
+    ]
+    table(
+        "conventions_fixed",
+        "Sequential accounting for raw mean--variance and EPO with $w=0.99$.",
+        "tab:conventions-fixed",
+        ["Specification", "Months", "Raw mean--variance", r"EPO, $w=0.99$"],
+        [
+            [
+                l,
+                "---" if pd.isna(r.months) else str(int(r.months)),
+                f"{r.raw_mvo_sharpe:.4f}",
+                f"{r.epo_099_sharpe:.4f}",
+            ]
+            for l, (_, r) in zip(labels, f.iterrows())
+        ],
+        r"Rows follow Table~\ref{tab:conventions} without the selection steps. The second row uses unscaled positions, as the published values are invariant to the paper's constant ex post volatility scaling. The first row is from \citet{pedersen2021}.",
+        "lrrr",
+    )
     dce = read("delta_ce_summary")
     table(
         "intervals",

@@ -1,0 +1,5 @@
+step,months,raw_mvo_sharpe,epo_099_sharpe
+"Published result (Table 5, Equity 1)",,0.1900,0.7300
+"Published procedure, all months, missing return set to zero",924.0000,0.2195,0.7535
+Drop 1943-07 and 1944-1948,863.0000,0.2336,0.7904
+Scale to 10% predicted volatility,863.0000,0.3221,0.8313
