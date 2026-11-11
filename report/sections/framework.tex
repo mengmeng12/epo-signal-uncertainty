@@ -39,7 +39,7 @@ L(s)=\bar U(x^H\mid s)-\bar U(x^{S,*}\mid s)
 \end{equation}
 This compression loss is the utility cost of the scalar restriction after optimizing its parameter. For the mean-uncertainty choice $\bar\kappa=\lambda/\tau$, define the additional choice loss as $\bar U(x^{S,*}\mid s)-\bar U(x^S(\bar\kappa)\mid s)$. The total loss of the mean scalar is the sum of these two terms. Appendix~\ref{app:math} provides the derivation and numerical search procedure.
 
-Dispersion alone does not describe where uncertainty differences enter a portfolio. Let $q=x^S(\bar\kappa)$, and define the exposure-alignment statistic
+Loss depends not only on how dispersed $h$ is, but on whether the portfolio holds the assets whose uncertainty differs. Let $q=x^S(\bar\kappa)$, and define the exposure-alignment statistic
 \begin{equation}
 A(s)=\frac{\sum_{i=1}^n\sigma_i^2q_i^2(h_i-1)^2}
 {\sum_{i=1}^n\sigma_i^2q_i^2}.
