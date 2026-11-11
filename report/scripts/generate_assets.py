@@ -33,6 +33,8 @@ from epo_project import (
     diagnostics,
 )
 
+from label_placebo import run as run_label_placebo, DEST as PLACEBO_DIR
+
 INPUTS: set[Path] = set()
 
 
@@ -507,6 +509,42 @@ def main():
             diagnostics.run(diagnostic_dir, make_plots=False)
     INPUTS.add(diagnostic_dir / "manifest.json")
     data = {name: read(name, diagnostic_dir) for name in required}
+    if not diagnostics_current(
+        PLACEBO_DIR, ["label_placebo_summary", "label_placebo_metrics"]
+    ):
+        run_label_placebo()
+    INPUTS.add(PLACEBO_DIR / "manifest.json")
+    placebo = read("label_placebo_summary", PLACEBO_DIR)
+    placebo_rows = []
+    policy_names = {
+        "fixed_gamma": r"Fixed $\gamma$",
+        "targeted_capped": r"10\% target; cap 3",
+    }
+    for row in placebo.itertuples():
+        placebo_rows.append(
+            [
+                row.period,
+                policy_names[row.policy],
+                f"{row.observed_minus_scalar_net_bp_year:.2f}",
+                f"{row.placebo_median_delta_net_bp_year:.2f}",
+                f"{row.observed_percentile_net:.0f}",
+            ]
+        )
+    table(
+        "label_placebo",
+        "Net utility under original and shuffled uncertainty labels.",
+        "tab:label-placebo",
+        [
+            "Period",
+            "Exposure policy",
+            "Original",
+            "Shuffled median",
+            r"Below original (\%)",
+        ],
+        placebo_rows,
+        r"Original and shuffled-median entries are annual certainty equivalent differences from scalar under the same exposure policy, in basis points. Each policy uses the same 100 fixed random label rankings, restricted to each month's eligible universe; the full cross-sectional uncertainty distribution is preserved. The last column is the percentage of shuffled portfolios with lower net certainty equivalent than the original heterogeneous rule. It is a descriptive rank, not a significance level or a probability of superiority. All paths remain solvent. Selection, forecasts, risk inputs and fee rates are fixed at the primary settings.",
+        "llrrr",
+    )
     make_tables(data)
     make_figures(data)
     code = (

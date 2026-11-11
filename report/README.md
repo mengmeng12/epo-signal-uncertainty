@@ -10,7 +10,7 @@ From the repository root, in the project's Python environment:
 python report/build.py
 ```
 
-The command generates 15 vector figures and 9 tables from result CSVs, then runs `latexmk` and BibTeX. The PDF is `report/build/main.pdf`. A TeX distribution with `pdflatex`, `bibtex`, `latexmk`, Latin Modern, `natbib`, `caption`, `microtype` and the standard mathematics packages is required. MacTeX and TeX Live provide these tools. The Python dependencies are in the repository's `requirements.txt`.
+The command generates 15 vector figures and 10 tables from result CSVs, then runs `latexmk` and BibTeX. The PDF is `report/build/main.pdf`. A TeX distribution with `pdflatex`, `bibtex`, `latexmk`, Latin Modern, `natbib`, `caption`, `microtype` and the standard mathematics packages is required. MacTeX and TeX Live provide these tools. The Python dependencies are in the repository's `requirements.txt`.
 
 For prose-only changes after the first build:
 
@@ -18,7 +18,7 @@ For prose-only changes after the first build:
 python report/build.py --skip-assets
 ```
 
-The build reads tracked benchmark, simulation and empirical outputs. If the additional diagnostics are missing or their manifest does not match current inputs/code, it recomputes them under `report/generated/diagnostic_data/`. No data download or risk-matrix cache is needed for this report build. To rerun the research itself, use the repository pipeline first, then rebuild the report. The report build does not rerun the simulations or primary backtest.
+The build reads tracked benchmark, simulation and empirical outputs. If the additional diagnostics are missing or their manifest does not match current inputs/code, it recomputes them under `report/generated/diagnostic_data/` and `report/generated/label_placebo/`. No data download or risk-matrix cache is needed for this report build. To rerun the research itself, use the repository pipeline first, then rebuild the report. The report build does not rerun the simulations or primary backtest.
 
 `generated/` and `build/` are ignored by Git. This keeps generated PDF, figure and intermediate-file changes out of collaborative source commits. Do not edit generated tables or figures directly. The report manifest records the exact input and source hashes and Python library versions used in a build; it does not supersede the research pipeline's historical manifests.
 
@@ -51,7 +51,7 @@ Keep the distinction between established methods and project work explicit. The 
 | Figure 3: calibration | `estimator_calibration.csv` |
 | Figure 4: utility accounting | `diagnostics/ce_decomposition.csv` |
 
-Appendices A–F contain derivations, simulation and calibration tables, data and replication-discrepancy accounting, forecast diagnostics, selection and holdings, and additional performance exhibits. There are 11 appendix figures and 4 appendix tables. Captions specify units, samples and uncertainty conventions. Figures are re-exported from the project's plotting functions as vectors; the report export adjusts labels and layout, without changing plotted numerical values.
+Appendices A–F contain derivations, simulation and calibration tables, data and replication-discrepancy accounting, forecast diagnostics, selection and holdings, and additional performance exhibits. There are 11 appendix figures and 5 appendix tables. Captions specify units, samples and uncertainty conventions. Figures are re-exported from the project's plotting functions as vectors; the report export adjusts labels and layout, without changing plotted numerical values.
 
 ## References and checks
 
@@ -65,7 +65,7 @@ The four article references were checked against Crossref DOI metadata and the p
 
 `python report/scripts/check_manuscript.py` checks source structure, bibliography keys, the abstract and compiled references; if PyMuPDF is installed, it also verifies the title-only cover and PDF text boundaries. Visual review remains necessary after changing figure layout or prose length. The first draft was compiled and its pages visually inspected. It is a working paper for collaborative revision, with empirical claims restricted to the implemented designs and observed estimates.
 
-## Scalar-sufficiency revision
+## Scalar-sufficiency revision (November 10, 2026)
 
 The interpretation centers on a practical scalar baseline when incremental net utility from estimated heterogeneity has not been established. Statistical nonsignificance is not an equivalence claim. Maintenance and computation costs are discussed qualitatively and are not included in reported net returns. The primary estimand remains the change in the uncertainty profile at a common scalar-selected penalty.
 
@@ -76,3 +76,17 @@ python report/scripts/check_scalar_sufficiency.py
 ```
 
 The checks cover 120 positive-definite matrix cases, an exact agreement case with nonuniform uncertainty, the zero-signal case, and the local expansion. They supplement the written proofs. Table 4 presents the existing fixed-risk-aversion and volatility-targeted results together; no new backtest or simulation experiment is introduced by this revision.
+
+## Simulation-to-empirical bridge and label diagnostic (November 11, 2026)
+
+Discussion distinguishes informative signals and known uncertainty in the simulation from estimated historical inputs. Negative predictive squared-error performance relative to a rolling mean does not establish that all signal information is absent.
+
+Appendix F.1 and Table F2 report one descriptive label-assignment diagnostic, generated by `scripts/label_placebo.py`. It uses 100 random industry rankings with seed 20261111, held fixed and restricted to each month's eligible industries. Each permutation preserves the monthly uncertainty distribution. Forecasts, covariance inputs, scalar-selected penalties and fee rates stay unchanged; each portfolio carries its own holdings and costs through the complete period under both existing exposure policies. No tuning is performed. Run it independently with:
+
+```sh
+python report/scripts/label_placebo.py
+```
+
+The script checks original-path reproduction, exact uniform-profile equivalence, allocation agreement and preservation of each uncertainty distribution. Failed paths are recorded rather than restarted or silently removed. The manifest stores input/code/output hashes and the sampled rankings; the normal report build reruns the diagnostic when those inputs change.
+
+The original matching beats 99 and 88 of 100 shuffled portfolios in 1970–2018 under fixed risk aversion and targeted exposure, respectively; the counts fall to 21 and 29 in 2019–2025. All paths remain solvent. These are descriptive ranks, not permutation p-values: industries are not assumed exchangeable. They neither prove equivalence to scalar nor isolate forecast quality from uncertainty-estimation error. The matched scalar comparison remains the main estimand.
