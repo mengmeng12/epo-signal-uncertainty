@@ -1,6 +1,6 @@
 \section{Data and Methodology}
 \label{sec:method}
-The empirical design connects the original industry application to the uncertainty comparison in Section~\ref{sec:framework}. We first construct the common return and momentum inputs and reproduce the benchmark. We then isolate scalar compression in a model with known inputs, assess the uncertainty estimator against simulated conditional means, and apply that estimator to historical industry portfolios. The final comparison changes the relative uncertainty penalty while keeping forecasts, risk estimates, the selection rule and trading assumptions common. Table~\ref{tab:design} summarizes the settings; the procedures below specify their timing and implementation.
+The empirical design connects the original industry application to the uncertainty comparison in Section~\ref{sec:framework}. We first construct the common return and momentum inputs and reproduce the benchmark. We then isolate scalar compression in a model with known inputs, assess the uncertainty estimator against simulated conditional means, and apply that estimator to historical industry portfolios. We compare scalar and heterogeneous uncertainty adjustments using the same return forecasts, covariance estimates, scalar-selected penalty parameter and trading assumptions. The strategies differ only in whether relative uncertainty is set to one for every asset or estimated separately for each asset. Table~\ref{tab:design} summarizes the settings, and the following subsections explain the implementation.
 
 \subsection{Data, timing and common risk inputs}
 We use monthly value-weighted returns on the 49 industry portfolios and the monthly risk-free return from the Kenneth R.\ French Data Library \citep{frenchdata}. The downloaded files extend from July 1926 to August 2026; evaluation ends in December 2025. The benchmark covers 1942--2018. The extension reports 1970--2018 and 2019--2025 separately. All dates in performance tables denote return realization months. Information available at the end of month $t$ determines positions held during month $t+1$.
@@ -33,9 +33,28 @@ For the historical extension we estimate an intercept and slope separately for e
 \end{equation}
 The latest response is observed in month $t$; the return in $t+1$ is never used to fit its forecast. An industry must have all 120 consecutive pairs, a current score and an admissible risk history. Entry occurs at its first forecast-ready month. We later require 60 consecutive forecast-ready months as a sensitivity exercise.
 
-We use a moving-block pairs bootstrap, following the dependent-data resampling approach of \citet{kunsch1989}. A bootstrap sample concatenates uniformly sampled overlapping blocks of 12 consecutive training pairs and truncates the concatenation to 120 pairs. Blocks do not wrap around the sample. The same sampled time indices apply to all industries. Each of 200 bootstrap samples produces a new regression fit and a forecast evaluated at the fixed current score $z_{i,t}$. Let $u_{i,t}$ denote the sample variance, with denominator 199, of these bootstrap forecasts. It measures variation in the estimated conditional mean. Future return innovations are not added to these forecasts.
+We use a moving-block pairs bootstrap, following the dependent-data resampling approach of \citet{kunsch1989}. A bootstrap sample concatenates uniformly sampled overlapping blocks of 12 consecutive training pairs and truncates the concatenation to 120 pairs. Blocks do not wrap around the sample. The same sampled time indices apply to all industries. Let $B=200$ be the number of bootstrap samples, and let $\widehat s_{i,t}^{*(k)}$ be the forecast from the regression refitted on sample $k$, evaluated at the fixed current score $z_{i,t}$. Define the bootstrap mean and forecast variance by
+\begin{equation}
+\overline s_{i,t}^{*}=\frac{1}{B}\sum_{k=1}^{B}\widehat s_{i,t}^{*(k)},
+\qquad
+u_{i,t}=\frac{1}{B-1}\sum_{k=1}^{B}
+\left(\widehat s_{i,t}^{*(k)}-\overline s_{i,t}^{*}\right)^2.
+\label{eq:bootstrap-variance}
+\end{equation}
+Thus $u_{i,t}$ measures variation in the estimated conditional mean across resampled training histories. Future return innovations are not added to these forecasts.
 
-Divide $u_{i,t}$ by the corresponding 60-month return variance $\widehat\sigma_{i,t}^2=(V_t)_{ii}$. Within the current eligible universe, winsorize these ratios at their 5th and 95th percentiles, apply a positive floor of $10^{-8}$, and normalize to cross-sectional mean one. The result is $\widehat h_{i,t}$. Linear interpolation defines the empirical quantiles. If all forecast variances are zero, set all $\widehat h_{i,t}=1$. The covariance matrix is recomputed on the actual eligible universe and the uncertainty profile is normalized on that same universe. Bootstrap seeds depend on formation month, so recomputing a date produces the same forecasts.
+Let $\mathcal I_t$ be the eligible-industry set and $N_t=|\mathcal I_t|$ its size. For each industry, divide $u_{i,t}$ by its corresponding 60-month return variance $\widehat\sigma_{i,t}^2=(V_t)_{ii}$. Let $\operatorname{Winsor}_t$ clip these ratios to their cross-sectional 5th and 95th percentiles within $\mathcal I_t$, using linearly interpolated empirical quantiles. The relative uncertainty profile is
+\begin{equation}
+\begin{aligned}
+\eta_{i,t}&=\frac{u_{i,t}}{\widehat\sigma_{i,t}^{2}},
+&\widetilde\eta_{i,t}&=\max\left\{10^{-8},\operatorname{Winsor}_t(\eta_{i,t})\right\},\\
+\widehat h_{i,t}&=\frac{\widetilde\eta_{i,t}}
+{N_t^{-1}\sum_{j\in\mathcal I_t}\widetilde\eta_{j,t}},
+&\frac{1}{N_t}\sum_{i\in\mathcal I_t}\widehat h_{i,t}&=1.
+\end{aligned}
+\label{eq:relative-uncertainty}
+\end{equation}
+Scaling by return variance expresses estimation uncertainty relative to asset risk. Winsorization limits the influence of extreme ratios, and mean normalization separates the relative profile from the common penalty level. If all forecast variances are zero, set all $\widehat h_{i,t}=1$. The covariance matrix is recomputed on the actual eligible universe and the uncertainty profile is normalized on that same universe. Bootstrap seeds depend on formation month, so recomputing a date produces the same forecasts.
 
 The empirical quantity $u_{i,t}$ is a proxy for conditional-mean estimation uncertainty. Its link to the theoretical signal-error variance is closest when the regression describes the conditional mean adequately, estimation bias is small, and resampling approximates the distribution of the fitted forecast. Bootstrap variation measures the sampling component of this error; it does not itself estimate systematic forecast bias. Dividing by return variance and normalizing extracts a relative profile, while the selected scalar sets the overall penalty level. The calibration experiment assesses this proxy in a known linear model. In historical data, the profile remains an estimated allocation input, rather than an observed error covariance.
 
@@ -51,7 +70,13 @@ x_t^H=\frac{1}{\gamma}(Q_t+\kappa_t\widehat H_t)^{-1}\widehat s_t.
 \end{equation}
 Both use the same estimated mean, risk matrix and scalar level. Their sole allocation-input difference is the relative uncertainty profile. Equation~\eqref{eq:empirical} implements the existing uncertainty-adjusted allocation with our bootstrap profile. It does not fit the prior scale $\tau$ or the absolute error scale $\lambda$ separately.
 
-The extension selects $w_t$ each January from the same seven-value grid using the preceding 60 complete months of the scalar candidate's \emph{net certainty equivalent}, defined below. A single selected value is then used for both portfolios for the full year. Larger $w$ wins a numerical tie. Candidate accounts begin from cash in January 1960 and maintain their own trading histories. A candidate whose total wealth factor becomes nonpositive is permanently excluded from selection. The chosen portfolios begin from cash in January 1970; their positions and wealth evolve continuously through December 2025, including the reporting boundary in 2019. Thus the later period does not receive a new initial account. The primary allocation has fixed risk aversion and no gross-exposure cap.
+The extension selects one common penalty each January using the preceding 60 complete months of scalar candidate performance. Let $Y$ denote the holding year and $t_Y$ the preceding December. For a fixed grid value $w$, let $y_m^S(w)$ be the scalar candidate's net excess return realized in month $m$, including trading and short costs. Define $\mathcal W_Y$ as the subset of the seven-value grid whose candidates have not previously become insolvent and have all 60 required monthly returns available. With $\CE$ denoting the annualized sample certainty equivalent defined in equation~\eqref{eq:ce}, the selected value is
+\begin{equation}
+w_Y\in\operatorname*{arg\,max}_{w\in\mathcal W_Y}
+\CE\!\left(\{y_m^S(w)\}_{m=t_Y-59}^{t_Y}\right).
+\label{eq:common-selection}
+\end{equation}
+Numerical ties within $10^{-12}$ select the larger $w$. Both portfolios use this $w_Y$ for all return months in year $Y$; in equation~\eqref{eq:empirical}, $w_t=w_Y$ when the position formed at $t$ earns its return in that year. Candidate accounts begin from cash in January 1960 and maintain their own trading histories. A candidate whose total wealth factor becomes nonpositive is permanently excluded from selection. The chosen portfolios begin from cash in January 1970; their positions and wealth evolve continuously through December 2025, including the reporting boundary in 2019. Thus the later period does not receive a new initial account. The primary allocation has fixed risk aversion and no gross-exposure cap.
 
 This design measures the effect of replacing a uniform profile with estimated relative uncertainty at a penalty level selected for the scalar strategy. It holds the selection rule fixed and gives the heterogeneous strategy no extra tuning search. A comparison between separately optimized strategy families is a different estimand. Both empirical rules use the same return data and rolling mean forecasts; the heterogeneous rule additionally requires bootstrap variance estimation, profile normalization and monitoring.
 
@@ -71,6 +96,22 @@ For $M$ monthly net excess returns, let $\bar y$ and $s_y^2$ be their sample mea
 \end{equation}
 Annualized Sharpe ratio is $\sqrt{12}\bar y/s_y$ and volatility is $\sqrt{12}s_y$. We also report monthly expected shortfall at 95\%, maximum drawdown from total net wealth, full turnover and gross exposure. Expected shortfall averages the worst 5\% of net excess returns, with fractional weight at the empirical boundary; it is reported as a positive loss. Drawdown includes initial wealth one within each reporting period.
 
-Uncertainty intervals for $\Delta\CE$ use 1,000 paired moving-block resamples of the realized monthly net-return vectors, with block length 12 and percentile endpoints 2.5\% and 97.5\%. The two strategies always use identical sampled months. Forecasts and portfolio-selection histories remain fixed during this resampling. We repeat the calculation with blocks of 6 and 24 months. Forecast diagnostics compare pooled squared forecast error with a rolling 120-response historical-mean predictor and calculate the monthly information coefficient, measured as the cross-sectional Spearman correlation. Their intervals also resample whole months in blocks, preserving contemporaneous industry dependence.
+Uncertainty intervals for $\Delta\CE$ use 1,000 paired moving-block resamples of the realized monthly net-return vectors, with block length 12 and percentile endpoints 2.5\% and 97.5\%. The two strategies always use identical sampled months. Forecasts and portfolio-selection histories remain fixed during this resampling. We repeat the calculation with blocks of 6 and 24 months.
+
+For forecast evaluation, let $\mathcal O$ contain the eligible industry--formation-month pairs $(i,t)$ whose next-month returns fall within the reported evaluation period. The historical-mean benchmark uses the same 120 completed responses as the regression. Define
+\begin{equation}
+\begin{aligned}
+\overline r^{\,\mathrm{hist}}_{i,t}
+&=\frac{1}{120}\sum_{j=t-119}^{t}r^e_{i,j},\\
+R_{\mathrm{OOS}}^2
+&=1-
+\frac{\sum_{(i,t)\in\mathcal O}
+\left(r^e_{i,t+1}-\widehat s_{i,t}\right)^2}
+{\sum_{(i,t)\in\mathcal O}
+\left(r^e_{i,t+1}-\overline r^{\,\mathrm{hist}}_{i,t}\right)^2}.
+\end{aligned}
+\label{eq:forecast-r2}
+\end{equation}
+Here OOS denotes out-of-sample prediction. The ratio pools squared errors over all eligible industry-month observations. A negative value means the fitted forecasts have higher squared error than the historical-mean benchmark. We also calculate the monthly information coefficient as the cross-sectional Spearman correlation between forecasts and next-month excess returns. Intervals for these diagnostics resample whole months in blocks, preserving contemporaneous industry dependence.
 
 Two trading-cost scenarios set $c$ to zero or 0.0025 while retaining the primary selected $w$ sequence and recomputing each strategy's position drift. The short fee remains unchanged. The 60-ready-month admission exercise reruns candidate histories and selection. Finally, a deployment exercise rescales each primary direction to 10\% annual predicted volatility under $Q_t$, then multiplies it by $\min(1,3/\sum_i|x_{i,t}|)$ to impose a gross-exposure cap of three. It retains the primary selected $w$ sequence and has its own trading history. These exercises distinguish uncertainty-profile effects from cost, entry and exposure conventions.
