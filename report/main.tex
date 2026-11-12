@@ -44,10 +44,21 @@
 {\Large Signal Uncertainty in Enhanced Portfolio Optimization\par}
 \end{center}
 \end{titlepage}
-\setcounter{page}{1}
+\pagenumbering{roman}
+\phantomsection
+\addcontentsline{toc}{section}{Abstract}
 \begin{abstract}
 \input{sections/abstract}
 \end{abstract}
+\clearpage
+\setcounter{tocdepth}{2}
+\begingroup
+\small
+\setlength{\parskip}{0pt}
+\tableofcontents
+\endgroup
+\clearpage
+\pagenumbering{arabic}
 \input{sections/introduction}
 \input{sections/framework}
 \input{sections/methodology}
@@ -57,6 +68,8 @@
 \input{sections/conclusion}
 \clearpage
 \bibliographystyle{plainnat}
+\phantomsection
+\addcontentsline{toc}{section}{References}
 \bibliography{references}
 \clearpage
 \appendix
