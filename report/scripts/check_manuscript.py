@@ -33,6 +33,9 @@ def main():
             )
     all_tex = "\n".join(p.read_text() for p in SECTIONS.glob("*.tex"))
     all_tex += "\n".join(p.read_text() for p in (REPORT / "generated").glob("*.tex"))
+    assert not any(
+        ord(c) < 32 and c not in "\n\r\t" for c in all_tex
+    ), "Control character in LaTeX source"
     keys = set(re.findall(r"@\w+\{([^,]+),", (REPORT / "references.bib").read_text()))
     cited = {
         key.strip()
@@ -65,7 +68,7 @@ def main():
     else:
         doc = fitz.open(REPORT / "build/main.pdf")
         cover = " ".join(doc[0].get_text().split())
-        expected = "When Is One Shrinkage Parameter Enough? Signal Uncertainty in Enhanced Portfolio Optimization"
+        expected = "Does Estimating Asset-Specific Uncertainty Improve Portfolio Decisions? Evidence from Enhanced Portfolio Optimization"
         assert cover == expected, f"Unexpected cover: {cover}"
         assert not doc.metadata.get("author"), "PDF author metadata must be empty"
         assert "??" not in "".join(

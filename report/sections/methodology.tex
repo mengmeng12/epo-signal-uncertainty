@@ -1,6 +1,6 @@
 \section{Data and Methodology}
 \label{sec:method}
-The empirical design connects the original industry application to the uncertainty comparison in Section~\ref{sec:framework}. We first construct the common return and momentum inputs and reproduce the benchmark. We then isolate scalar compression in a model with known inputs, assess the uncertainty estimator against simulated conditional means, and apply that estimator to historical industry portfolios. We compare scalar and heterogeneous uncertainty adjustments using the same return forecasts, covariance estimates, scalar-selected penalty parameter and trading assumptions. The strategies differ only in whether relative uncertainty is set to one for every asset or estimated separately for each asset. Table~\ref{tab:design} summarizes the settings, and the following subsections explain the implementation.
+The design has three stages. We reproduce the industry benchmark, measure scalar restriction and uncertainty-estimation losses in a known model, and compare feasible allocations on historical returns. In the historical comparison, scalar and heterogeneous adjustments use the same return forecasts, covariance estimates, scalar-selected penalty parameter and trading assumptions. The allocation input that changes is relative uncertainty: it is one for every asset in the scalar rule and estimated separately for each asset in the heterogeneous rule. This change can affect composition, exposure and turnover. Table~\ref{tab:design} summarizes the settings.
 
 \subsection{Data, timing and common risk inputs}
 We use monthly value-weighted returns on the 49 industry portfolios and the monthly risk-free return from the Kenneth R.\ French Data Library \citep{frenchdata}. The downloaded files extend from July 1926 to August 2026; evaluation ends in December 2025. The benchmark covers 1942--2018. The extension reports 1970--2018 and 2019--2025 separately. All dates in performance tables denote return realization months. Information available at the end of month $t$ determines positions held during month $t+1$.
@@ -37,7 +37,7 @@ A zero direction remains a zero position. Because $Q_t$ is a monthly covariance 
 
 We also reproduce the principal-component mechanism. Each month we diagonalize the correlation matrix of each portfolio's risk matrix ($\widehat\Sigma_t$, $Q_t$ or the selected EPO matrix), order its eigenvalues from smallest to largest and place components into five groups; the three correlation matrices share eigenvectors, so the groups coincide. For each group we compare predicted and realized risk, signal-implied and realized performance, and the share of predicted portfolio variance. These diagnostics distinguish the contribution of small-eigenvalue directions from the aggregate performance comparison. Appendix~\ref{app:math} defines the component statistics exactly.
 
-\subsection{Known-uncertainty simulation}
+\subsection{Simulation design}
 The first experiment implements equations~\eqref{eq:model}--\eqref{eq:loss} with $n=49$, $\gamma=3$, $\tau=0.04$ and $\lambda=0.10$. Every asset has monthly volatility 0.05 and every pair has correlation 0.30. For each target cross-sectional coefficient of variation $c\in\{0,0.5,1\}$, we construct a positive uncertainty profile with mean one. For $c>0$, draw independent $v_i\sim N(0,1)$ and set
 \begin{equation}
 \ell_c=\sqrt{\log(1+c^2)},
@@ -60,6 +60,14 @@ For draw $k$, write $s_k$ for the signal, $x_k^H$ for its heterogeneous allocati
 \label{eq:simulation-summary}
 \end{equation}
 We express the loss share as a percentage by multiplying by 100. It is a ratio of sample means; individual-draw utility ratios are not averaged. We also report mean additional choice loss. The model and its utility are monthly. For reporting, we multiply utility levels, losses, Monte Carlo standard errors and interval endpoints by $12\times10^4$ to express them in annual basis points. This is arithmetic annualization of monthly quadratic utility; it does not simulate an additional twelve-month holding process or compound returns. Loss shares are unchanged. These conditional model losses measure the cost of a restriction with known inputs, whereas the historical certainty equivalents summarize realized net returns; the common time unit does not make them interchangeable economic gains. Forecast errors and bootstrap standard errors retain monthly units because they refer to next-month predictions. Within each fixed profile, draws are divided into thirds by the exposure-alignment statistic in equation~\eqref{eq:alignment}. Appendix~\ref{app:simulation} specifies the seed, conditional Monte Carlo intervals and calibration design.
+
+The second experiment measures the cost of estimating relative uncertainty. We retain the true $h$, signals and conditional means from the first experiment, and fix the common scalar at $\bar\kappa=\lambda/\tau=2.5$. For draw $k$, generate independent $\zeta_{i,k}\sim N(0,1)$, independent of the true signal and its error. At estimation-error levels $a\in\{0,0.5,1\}$, construct
+\begin{equation}
+\widetilde h_{i,k}(a)=h_i\exp(a\zeta_{i,k}-a^2/2),\qquad
+\widehat h_{i,k}(a)=\frac{\widetilde h_{i,k}(a)}{n^{-1}\sum_j\widetilde h_{j,k}(a)}.
+\label{eq:controlled-h-error}
+\end{equation}
+The same standard-normal draws are used across error levels and true-uncertainty settings. The estimated matrix is $\widehat\Lambda_k(a)=\lambda\diag(\sigma_i^2\widehat h_{i,k}(a))$. We form $\widehat x^H$ from this matrix and the original signal, then compute $L_{\bar\kappa}$, $P$ and their difference using the true conditional objective. The experiment isolates errors in relative uncertainty while keeping its common scale known. The parameter $a$ specifies controlled measurement error; the OLS/bootstrap estimator is assessed separately below. At $a=0$, $P=0$; with uniform true uncertainty, $L_{\bar\kappa}=0$. We verify equation~\eqref{eq:estimation-tradeoff} for every draw and report mean losses, their shares of mean oracle utility and the fraction with $P<L_{\bar\kappa}$. Appendix~\ref{app:simulation} gives numerical results and Monte Carlo intervals.
 
 \subsection{Forecasts and relative uncertainty}
 For the historical extension we estimate an intercept and slope separately for each industry by ordinary least squares. At formation date $t$, the regression contains exactly 120 pairs $(z_{i,j},r^e_{i,j+1})$ for $j=t-120,\ldots,t-1$. Writing its coefficients as $\widehat a_{i,t}$ and $\widehat b_{i,t}$, the next-month forecast is
@@ -90,13 +98,13 @@ Let $\mathcal I_t$ be the eligible-industry set and $N_t=|\mathcal I_t|$ its siz
 \end{aligned}
 \label{eq:relative-uncertainty}
 \end{equation}
-Scaling by return variance expresses estimation uncertainty relative to asset risk. Winsorization limits the influence of extreme ratios, and mean normalization separates the relative profile from the common penalty level. If all forecast variances are zero, set all $\widehat h_{i,t}=1$. The covariance matrix is recomputed on the actual eligible universe and the uncertainty profile is normalized on that same universe. Bootstrap seeds depend on formation month, so recomputing a date produces the same forecasts.
+Scaling by return variance expresses estimation uncertainty relative to asset risk. Winsorization limits extreme ratios, and normalization fixes the cross-sectional mean of $\widehat h$ at one. Portfolio exposure and risk remain outcomes of the allocation rule. If all forecast variances are zero, set all $\widehat h_{i,t}=1$. The covariance matrix is recomputed on the actual eligible universe and the uncertainty profile is normalized on that same universe. Bootstrap seeds depend on formation month, so recomputing a date produces the same forecasts.
 
-The empirical quantity $u_{i,t}$ is a proxy for conditional-mean estimation uncertainty. Its link to the theoretical signal-error variance is closest when the regression describes the conditional mean adequately, estimation bias is small, and resampling approximates the distribution of the fitted forecast. Bootstrap variation measures the sampling component of this error; it does not itself estimate systematic forecast bias. Dividing by return variance and normalizing extracts a relative profile, while the selected scalar sets the overall penalty level. The calibration experiment assesses this proxy in a known linear model. In historical data, the profile remains an estimated allocation input, rather than an observed error covariance.
+The quantity $u_{i,t}$ estimates sampling variance of the fitted conditional mean. The normalized $\widehat h_{i,t}$ supplies relative uncertainty to the allocation, and the selected scalar controls the common penalty. Calibration evaluates this estimator against a known conditional mean, using the same regression window and resampling procedure.
 
 Before portfolio evaluation, we run the identical estimator on 1,000 synthetic histories with a known conditional-mean regression. Persistent predictors have autoregressive coefficient 0.92; residual volatilities span 0.04 to 0.08 and residual cross-industry correlation is 0.30. We study both independent predictor innovations and a feedback specification in which a return innovation enters the next predictor. Each history supplies 120 training pairs and a current forecast. We compare estimated variance with squared conditional-mean estimation error, evaluate interval coverage, and assess relative-uncertainty rankings. The full process, including the feedback coefficient and the appropriate interpretation of its analytical comparison, is specified in Appendix~\ref{app:simulation}.
 
-\subsection{Matched allocations and selection}
+\subsection{Allocations, selection and position sizing}
 Let $\widehat H_t=\diag(\widehat\sigma_{i,t}^2\widehat h_{i,t})$ on the eligible universe. With fixed risk aversion $\gamma=3$ and $\kappa_t=w_t/(1-w_t)$, the primary portfolios are
 \begin{equation}
 x_t^S=\frac{1}{\gamma}(Q_t+\kappa_t V_t)^{-1}\widehat s_t,
@@ -104,7 +112,7 @@ x_t^S=\frac{1}{\gamma}(Q_t+\kappa_t V_t)^{-1}\widehat s_t,
 x_t^H=\frac{1}{\gamma}(Q_t+\kappa_t\widehat H_t)^{-1}\widehat s_t.
 \label{eq:empirical}
 \end{equation}
-Both use the same estimated mean, risk matrix and scalar level. Their sole allocation-input difference is the relative uncertainty profile. Equation~\eqref{eq:empirical} implements the existing uncertainty-adjusted allocation with our bootstrap profile. It does not fit the prior scale $\tau$ or the absolute error scale $\lambda$ separately.
+Equation~\eqref{eq:empirical} implements the EPO allocation using the same estimated mean, risk matrix and scalar level, with relative uncertainty estimated by bootstrap for the heterogeneous rule. Here $\kappa_t$ is an effective penalty parameter selected from past portfolio performance.
 
 The extension selects one common penalty each January using the preceding 60 complete months of scalar candidate performance. Let $Y$ denote the holding year and $t_Y$ the preceding December. For a fixed grid value $w$, let $y_m^S(w)$ be the scalar candidate's net excess return realized in month $m$, including trading and short costs. Define $\mathcal W_Y$ as the subset of the seven-value grid whose candidates have not previously become insolvent and have all 60 required monthly returns available. With $\CE$ denoting the annualized sample certainty equivalent defined in equation~\eqref{eq:ce}, the selected value is
 \begin{equation}
@@ -114,7 +122,15 @@ w_Y\in\operatorname*{arg\,max}_{w\in\mathcal W_Y}
 \end{equation}
 Numerical ties within $10^{-12}$ select the larger $w$. Both portfolios use this $w_Y$ for all return months in year $Y$; in equation~\eqref{eq:empirical}, $w_t=w_Y$ when the position formed at $t$ earns its return in that year. Candidate accounts begin from cash in January 1960 and maintain their own trading histories. A candidate whose total wealth factor becomes nonpositive is permanently excluded from selection. The chosen portfolios begin from cash in January 1970; their positions and wealth evolve continuously through December 2025, including the reporting boundary in 2019. Thus the later period does not receive a new initial account. The primary allocation has fixed risk aversion and no gross-exposure cap.
 
-This design measures the effect of replacing a uniform profile with estimated relative uncertainty at a penalty level selected for the scalar strategy. It holds the selection rule fixed and gives the heterogeneous strategy no extra tuning search. A comparison between separately optimized strategy families is a different estimand. Both empirical rules use the same return data and rolling mean forecasts; the heterogeneous rule additionally requires bootstrap variance estimation, profile normalization and monitoring.
+This design measures the effect of asset-specific uncertainty at a common scalar-selected penalty. We evaluate the original fixed-$\gamma$ allocation alongside a common position-sizing rule. For $j\in\{S,H\}$, set
+\begin{equation}
+\begin{aligned}
+\widetilde x_t^j&=\frac{0.10}{\sqrt{12\,x_t^{j\prime}Q_tx_t^j}}\,x_t^j,\\
+x_t^{j,\mathrm{target}}&=\widetilde x_t^j\min\left\{1,\frac{3}{\sum_i|\widetilde x_{i,t}^j|}\right\}.
+\end{aligned}
+\label{eq:deployment}
+\end{equation}
+A zero portfolio remains zero. This sets predicted annual volatility to 10\% before applying a gross-exposure cap of three. The cap can reduce predicted risk below the target. This comparison retains the fixed-$\gamma$ rule's selected $w_t$ sequence; each strategy carries its own holdings, drift and costs. Risk aversion remains three when evaluating utility under either position-sizing rule.
 
 To describe portfolio composition, define gross exposure $g^j_t=\sum_i|x^j_{i,t}|$ for strategy $j\in\{S,H\}$. Gross-normalized composition distance is $\sum_i|x^H_{i,t}/g^H_t-x^S_{i,t}/g^S_t|$. Risk-direction correlation is
 \begin{equation}
@@ -124,7 +140,7 @@ To describe portfolio composition, define gross exposure $g^j_t=\sum_i|x^j_{i,t}
 \end{equation}
 A positive rescaling alone gives distance zero and correlation one. These measures distinguish changes in composition from changes in overall exposure.
 
-\subsection{Trading, evaluation and sensitivity analysis}
+\subsection{Trading and evaluation}
 Let $x^-_{i,t}$ denote the position immediately before rebalancing at date $t$, expressed relative to current wealth. Full traded notional is $T_t=\sum_i|x_{i,t}-x^-_{i,t}|$, including liquidation of industries leaving the universe. Short notional is $B_t=\sum_i\max(-x_{i,t},0)$. With trading rate $c=0.001$ per dollar traded and annual short fee $b=0.005$, net excess return is
 \begin{equation}
 y_{t+1}=x_t'r^e_{t+1}-cT_t-\frac{b}{12}B_t.
@@ -140,7 +156,7 @@ For $M$ monthly net excess returns, let $\bar y$ and $s_y^2$ be their sample mea
 \end{equation}
 Annualized Sharpe ratio is $\sqrt{12}\bar y/s_y$ and volatility is $\sqrt{12}s_y$. We also report monthly expected shortfall at 95\%, maximum drawdown from total net wealth, full turnover and gross exposure. Expected shortfall averages the worst 5\% of net excess returns, with fractional weight at the empirical boundary; it is reported as a positive loss. Drawdown includes initial wealth one within each reporting period.
 
-Uncertainty intervals for $\Delta\CE$ use 1,000 paired moving-block resamples of the realized monthly net-return vectors, with block length 12 and percentile endpoints 2.5\% and 97.5\%. The two strategies always use identical sampled months. Forecasts and portfolio-selection histories remain fixed during this resampling. We repeat the calculation with blocks of 6 and 24 months.
+For each position-sizing rule and period, uncertainty intervals for $\Delta\CE$ use 1,000 paired moving-block bootstrap samples of realized monthly net returns. We sample overlapping blocks of 12 consecutive months uniformly, concatenate them and truncate to the original period length. All strategies use the same sampled dates. Each bootstrap sample recomputes means, sample variances and the CE difference; the 2.5th and 97.5th percentiles form the interval. The procedure resamples the returns generated by the fitted forecasts and selection rules. For the fixed-$\gamma$ comparison, blocks of 6 and 24 months provide the existing sensitivity checks.
 
 For forecast evaluation, let $\mathcal O$ contain the eligible industry--formation-month pairs $(i,t)$ whose next-month returns fall within the reported evaluation period. The historical-mean benchmark uses the same 120 completed responses as the regression. Define
 \begin{equation}
@@ -158,4 +174,12 @@ R_{\mathrm{OOS}}^2
 \end{equation}
 Here OOS denotes out-of-sample prediction. The ratio pools squared errors over all eligible industry-month observations. A negative value means the fitted forecasts have higher squared error than the historical-mean benchmark. We also calculate the monthly information coefficient as the cross-sectional Spearman correlation between forecasts and next-month excess returns. Intervals for these diagnostics resample whole months in blocks, preserving contemporaneous industry dependence.
 
-Two trading-cost scenarios set $c$ to zero or 0.0025 while retaining the primary selected $w$ sequence and recomputing each strategy's position drift. The short fee remains unchanged. The 60-ready-month admission exercise reruns candidate histories and selection. Finally, an exposure sensitivity exercise rescales each primary direction to 10\% annual predicted volatility under $Q_t$, then multiplies it by $\min(1,3/\sum_i|x_{i,t}|)$ to impose a gross-exposure cap of three. It retains the primary selected $w$ sequence and has its own trading history. These exercises distinguish uncertainty-profile effects from cost, entry and exposure conventions.
+To evaluate uncertainty-to-asset assignment, we compare the original $\widehat h_t$ with 100 random assignments to industries. A fixed random ranking determines each assignment, restricted to the eligible industries at each date. This preserves the monthly distribution of uncertainty estimates and keeps the mapping fixed while eligibility is unchanged. Forecasts, risk estimates and selected penalties are common; each portfolio generates its own holdings and costs under both position-sizing rules. Let $y^O$ denote the original strategy's net-return series and $y^{(b)}$ that of random assignment $b$. Define
+\begin{equation}
+D=\CE(y^O)-\frac{1}{B_{\mathrm{A}}}\sum_{b=1}^{B_{\mathrm{A}}}\CE(y^{(b)}),
+\qquad B_{\mathrm{A}}=100.
+\label{eq:assignment-advantage}
+\end{equation}
+The benchmark averages the utilities of the separately implemented strategies. We calculate an interval for $D$ by applying the same paired moving-block bootstrap to all 101 return series together, keeping the assignments fixed. This is a time-series comparison with a specified random-assignment benchmark. The percentage of assignments with lower utility than the original is also reported as a descriptive rank. Appendix~\ref{app:label-placebo} specifies the mapping and resampling details.
+
+Two trading-cost scenarios set $c$ to zero or 0.0025 under fixed risk aversion, retaining the selected $w$ sequence and recomputing each strategy's position drift. The short fee remains unchanged. The 60-ready-month admission exercise reruns candidate histories and selection. These comparisons use the same excess-return and utility definitions as the baseline.

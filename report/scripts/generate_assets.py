@@ -35,6 +35,7 @@ from epo_project import (
 )
 
 from label_placebo import run as run_label_placebo, DEST as PLACEBO_DIR
+from uncertainty_value import run as run_uncertainty_value, DEST as VALUE_DIR
 
 INPUTS: set[Path] = set()
 
@@ -207,10 +208,14 @@ def make_tables(d):
         "tab:forecast",
         ["Statistic", *periods],
         rows,
-        r"Forecast accuracy uses 28,104 and 4,116 eligible industry-months, respectively. $R^2$ compares pooled squared errors with the rolling historical-mean forecast. Rank correlation compares forecasts with next-month excess returns. Uncertainty dispersion is the monthly population coefficient of variation of $\widehat h$, averaged over time. Intervals use 1,000 whole-month block resamples of length 12.",
+        r"Forecast accuracy uses 28,104 and 4,116 eligible industry-months, respectively. $R^2$ compares pooled squared errors with the rolling historical-mean forecast. Rank correlation compares forecasts with next-month excess returns. Uncertainty dispersion is the monthly population coefficient of variation of $\widehat h$, averaged over time. Intervals use 1,000 moving-block bootstrap samples with 12 consecutive months per block.",
     )
     p = read("performance_table")
     dep = read("deployment_sensitivity")
+    deployment_intervals = read("empirical_intervals", VALUE_DIR)
+    deployment_intervals = deployment_intervals[
+        deployment_intervals.policy == "targeted_capped"
+    ].set_index("period")
     rows = []
     order = [
         (period, strategy)
@@ -228,8 +233,8 @@ def make_tables(d):
         ("Mean gross exposure", "mean_gross", 3),
     ]
     for title, frame, primary in [
-        (r"A. Primary: fixed $\gamma=3$", p, True),
-        (r"B. Sensitivity: 10\% predicted-volatility target; gross cap 3", dep, False),
+        (r"A. Direct allocation: fixed $\gamma=3$", p, True),
+        (r"B. Common position sizing: 10\% volatility target; gross cap 3", dep, False),
     ]:
         indexed = frame.set_index(["period", "strategy"])
         rows.append([r"\addlinespace\multicolumn{5}{l}{\textit{" + title + "}}"])
@@ -257,6 +262,15 @@ def make_tables(d):
             )
         else:
             rows.append(
+                [r"95\% paired block interval"]
+                + [
+                    r"\multicolumn{2}{c}{["
+                    + f"{deployment_intervals.loc[period, 'delta_lower_bp_year']:.2f}, {deployment_intervals.loc[period, 'delta_upper_bp_year']:.2f}"
+                    + "]}"
+                    for period in periods
+                ]
+            )
+            rows.append(
                 ["Months with binding cap"]
                 + [str(int(indexed.loc[key, "cap_months"])) for key in order]
             )
@@ -270,7 +284,7 @@ def make_tables(d):
             r"\multicolumn{2}{c}{2019--2025}",
         ],
         rows,
-        r"Each period contains 588 or 84 months. Certainty equivalents use risk aversion 3 in both panels; $\Delta\mathrm{CE}$ is heterogeneous minus scalar. Trading cost is 10 bp per dollar of full traded notional and the annual short fee is 50 bp. Tail loss is monthly expected shortfall of net excess returns; drawdown uses total net wealth. Panel A intervals use 1,000 paired 12-month block resamples. Panel B retains the primary selected penalty sequence with its own position drift and costs; its intervals are not estimated. The volatility target uses predicted risk under the common matrix. Positions continue through the 2019 boundary.",
+        r"Each period contains 588 or 84 months. Certainty equivalents use risk aversion 3; cash has zero excess-return certainty equivalent. $\Delta\mathrm{CE}$ is heterogeneous minus scalar. Trading cost is 10 bp per dollar of full traded notional; the annual short fee is 50 bp. Both panels use 1,000 paired moving-block bootstrap samples with 12-month blocks. Panel B retains Panel A's selected penalties and recomputes its own position drift and costs. The target is predicted volatility under the common risk matrix, before the gross cap. Tail loss is monthly expected shortfall; drawdown uses total net wealth. Holdings continue through the 2019 boundary.",
         "lrrrr",
         header_detail=(
             r"\cmidrule(lr){2-3}\cmidrule(lr){4-5}"
@@ -303,7 +317,7 @@ def make_tables(d):
         "tab:robustness",
         ["Specification", *periods],
         rows,
-        r"Entries are heterogeneous minus scalar certainty equivalents, in annual basis points. Cost scenarios retain the primary selected penalty sequence and recompute position drift. The entry-rule exercise reruns selection. Deployment retains primary selection but rescales positions; its uncertainty interval is not estimated. Appendix~\ref{app:performance} reports intervals for the other scenarios.",
+        r"Entries are heterogeneous minus scalar certainty equivalents, in annual basis points. Cost and entry-rule scenarios use fixed risk aversion. Cost scenarios retain the selected penalty sequence and recompute position drift; the entry-rule exercise reruns selection. The last row uses common position sizing at the original selected penalties. Table~\ref{tab:performance} gives its interval; Appendix~\ref{app:performance} reports the other sensitivity intervals.",
     )
     c = annual_simulation_report()
     rows = []
@@ -552,6 +566,146 @@ def make_figures(d):
     plt.close("all")
 
 
+def make_value_assets():
+    intervals = read("empirical_intervals", VALUE_DIR)
+    rows = []
+    for period, part in intervals.groupby("period", sort=False):
+        rows.append([r"\addlinespace\multicolumn{6}{l}{\textit{" + period + "}}"])
+        for r in part.itertuples():
+            rows.append(
+                [
+                    (
+                        r"Fixed $\gamma$"
+                        if r.policy == "fixed_gamma"
+                        else r"10\% target; cap 3"
+                    ),
+                    f"{r.delta_ce_bp_year:.2f}",
+                    f"{r.random_mean_delta_bp_year:.2f}",
+                    f"{r.assignment_advantage_bp_year:.2f}",
+                    f"[{r.assignment_lower_bp_year:.2f}, {r.assignment_upper_bp_year:.2f}]",
+                    f"{r.below_original_pct:.0f}",
+                ]
+            )
+    table(
+        "label_placebo",
+        "The value of the original uncertainty-to-asset assignment.",
+        "tab:label-placebo",
+        [
+            "Position sizing",
+            "Original",
+            "Random mean",
+            "$D$",
+            r"95\% interval for $D$",
+            r"Rank (\%)",
+        ],
+        rows,
+        r"Original and Random mean are annual net certainty equivalent differences from scalar, in bp. Random mean averages the certainty equivalents of 100 fixed random assignments. $D$ is Original minus Random mean. Intervals use 1,000 paired moving-block bootstrap samples of all strategy returns together, with 12-month blocks and the assignments held fixed. Rank is the percentage of random assignments with lower net certainty equivalent than the original. Appendix~\ref{app:label-placebo} gives the assignment algorithm and distribution summaries.",
+        "lrrrrr",
+    )
+    rows = []
+    for r in intervals.itertuples():
+        rows.append(
+            [
+                r.period,
+                (
+                    r"Fixed $\gamma$"
+                    if r.policy == "fixed_gamma"
+                    else r"10\% target; cap 3"
+                ),
+                f"{r.random_mean_delta_bp_year:.2f}",
+                f"{r.random_median_delta_bp_year:.2f}",
+                f"{r.below_original_pct:.0f}",
+            ]
+        )
+    table(
+        "assignment_distribution",
+        "Random-assignment net utility summaries.",
+        "tab:assignment-distribution",
+        ["Period", "Position sizing", "Mean", "Median", r"Below original (\%)"],
+        rows,
+        r"Mean and median are annual net certainty equivalent differences from scalar in bp, across the same 100 assignments. The percentage below the original is a descriptive rank. All strategies remain solvent.",
+        "llrrr",
+    )
+
+    summary = read("error_simulation_summary", VALUE_DIR)
+    rows = []
+    for r in summary.itertuples():
+
+        def rounded(value):
+            return f"{0 if abs(value) < 0.5 else value:,.0f}"
+
+        rows.append(
+            [
+                f"{100*r.realized_cv:.0f}",
+                f"{r.error_sd:g}",
+                rounded(r.scalar_loss_bp_year),
+                rounded(r.estimation_penalty_bp_year),
+                rounded(r.net_gain_bp_year),
+                f"[{rounded(r.net_gain_lower_bp_year)}, {rounded(r.net_gain_upper_bp_year)}]",
+                f"{100*r.probability_gain_positive:.1f}",
+            ]
+        )
+    table(
+        "estimation_tradeoff",
+        "Scalar restriction cost and uncertainty-estimation loss.",
+        "tab:estimation-tradeoff",
+        [
+            r"CV (\%)",
+            "$a$",
+            r"$L_{\bar\kappa}$",
+            "$P$",
+            r"$L_{\bar\kappa}-P$",
+            r"95\% interval",
+            r"$P<L_{\bar\kappa}$ (\%)",
+        ],
+        rows,
+        r"CV is the realized coefficient of variation of true relative uncertainty. $a$ is the log standard deviation of the multiplicative estimation error. Utilities and interval endpoints are annual bp; entries are means across 1,000 paired draws. Intervals equal the mean plus or minus 1.96 Monte Carlo standard errors. The last column reports the fraction of draws with a positive gain, using a monthly numerical tolerance of $10^{-12}$. The common scalar is $\bar\kappa=\lambda/\tau=2.5$. Each error level uses the same true uncertainty, signals and standard-normal estimation errors.",
+        "rrrrrrr",
+    )
+
+    colors = ["#2a78d6", "#eb6834", "#23866b"]
+    fig, axes = plt.subplots(1, 3, figsize=(10, 4.4), layout="constrained", sharey=True)
+    for ax, (_, part) in zip(axes, summary.groupby("target_cv", sort=True)):
+        for col, label, color, marker in zip(
+            ["scalar_loss", "estimation_penalty", "net_gain"],
+            [
+                r"Restriction cost $L_{\bar\kappa}$",
+                r"Estimation loss $P$",
+                r"Net gain $L_{\bar\kappa}-P$",
+            ],
+            colors,
+            ["o", "s", "^"],
+        ):
+            ax.errorbar(
+                part.error_sd,
+                part[f"{col}_bp_year"],
+                yerr=1.96 * part[f"{col}_se_bp_year"],
+                label=label,
+                color=color,
+                marker=marker,
+                capsize=3,
+                linewidth=1.8,
+            )
+        ax.axhline(0, color="#555555", linewidth=0.8)
+        ax.set(
+            title=f"True uncertainty CV: {100*part.realized_cv.iloc[0]:.0f}%",
+            xlabel=r"Error log SD $a$",
+            xticks=[0, 0.5, 1],
+        )
+        ax.title.set_fontsize(13)
+        ax.xaxis.label.set_fontsize(14)
+        ax.tick_params(labelsize=13)
+        ax.grid(axis="y", color="#e4e3df", linewidth=0.6)
+        ax.spines[["top", "right"]].set_visible(False)
+    axes[0].set_ylabel("Annual model utility (bp)", fontsize=14)
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(
+        handles, labels, loc="outside lower center", ncol=3, frameon=False, fontsize=13
+    )
+    fig.savefig(DEST / "estimation_tradeoff.pdf", bbox_inches="tight")
+    plt.close(fig)
+
+
 def diagnostics_current(directory, required):
     manifest_path = directory / "manifest.json"
     if not manifest_path.exists():
@@ -603,41 +757,23 @@ def main():
     INPUTS.add(diagnostic_dir / "manifest.json")
     data = {name: read(name, diagnostic_dir) for name in required}
     if not diagnostics_current(
-        PLACEBO_DIR, ["label_placebo_summary", "label_placebo_metrics"]
+        PLACEBO_DIR,
+        ["label_placebo_summary", "label_placebo_metrics", "label_placebo_returns"],
     ):
         run_label_placebo()
     INPUTS.add(PLACEBO_DIR / "manifest.json")
-    placebo = read("label_placebo_summary", PLACEBO_DIR)
-    placebo_rows = []
-    policy_names = {
-        "fixed_gamma": r"Fixed $\gamma$",
-        "targeted_capped": r"10\% target; cap 3",
-    }
-    for row in placebo.itertuples():
-        placebo_rows.append(
-            [
-                row.period,
-                policy_names[row.policy],
-                f"{row.observed_minus_scalar_net_bp_year:.2f}",
-                f"{row.placebo_median_delta_net_bp_year:.2f}",
-                f"{row.observed_percentile_net:.0f}",
-            ]
-        )
-    table(
-        "label_placebo",
-        "Net utility under original and shuffled uncertainty labels.",
-        "tab:label-placebo",
+    if not diagnostics_current(
+        VALUE_DIR,
         [
-            "Period",
-            "Exposure policy",
-            "Original",
-            "Shuffled median",
-            r"Below original (\%)",
+            "error_simulation_summary",
+            "empirical_intervals",
+            "empirical_bootstrap",
+            "error_simulation_draws",
         ],
-        placebo_rows,
-        r"Original and shuffled-median entries are annual certainty equivalent differences from scalar under the same exposure policy, in basis points. Each policy uses the same 100 fixed random label rankings, restricted to each month's eligible universe; the full cross-sectional uncertainty distribution is preserved. The last column is the percentage of shuffled portfolios with lower net certainty equivalent than the original heterogeneous rule. It is a descriptive rank, not a significance level or a probability of superiority. All paths remain solvent. Selection, forecasts, risk inputs and fee rates are fixed at the primary settings.",
-        "llrrr",
-    )
+    ):
+        run_uncertainty_value()
+    INPUTS.add(VALUE_DIR / "manifest.json")
+    make_value_assets()
     make_tables(data)
     make_figures(data)
     code = (

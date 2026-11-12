@@ -32,7 +32,16 @@ Uniform $h_i=1$ gives $x^H=x^S(\lambda/\tau)$. To connect the penalty to the usu
 
 \citet{ceria2006} distinguish expected-return estimation uncertainty from return risk, a distinction also present in our framework. Their robust formulation evaluates adverse expected returns within an uncertainty set, whereas our analysis retains the Gaussian uncertainty-adjusted allocation underlying EPO.
 
-\subsection{Compression loss and exposure alignment}
+\subsection{An effective scalar and compression loss}
+For a fixed nonzero position vector $q$, define the uncertainty-equivalent scalar
+\begin{equation}
+\lambda_{\mathrm{eff}}(q)=\frac{q'\Lambda q}{q'Vq}
+=\frac{\sum_i\lambda_i\sigma_i^2q_i^2}{\sum_i\sigma_i^2q_i^2},
+\qquad \lambda_i=\lambda h_i.
+\label{eq:effective-scalar}
+\end{equation}
+This is an exposure-weighted average of relative uncertainty. It exactly matches the quadratic uncertainty penalty for that position: $q'\Lambda q=\lambda_{\mathrm{eff}}(q)q'Vq$. The corresponding allocation penalty is $\lambda_{\mathrm{eff}}(q)/\tau$. Its weights depend on individual variances and squared positions. A change in positions changes the relevant average, so matching the penalty at a given portfolio does not generally reproduce the heterogeneous optimizer. The arithmetic mean $\lambda$, the exposure-weighted $\lambda_{\mathrm{eff}}(q)$ and the scalar that maximizes utility answer distinct questions.
+
 The oracle scalar parameter, denoted $\kappa^*(s)$, maximizes $\bar U(x^S(\kappa)\mid s)$ over $\kappa\geq0$, including the limiting zero position. The oracle knows $\Sigma$, $\Lambda$, $\tau$ and the observed $s$. Neither allocation observes the sampled $\mu$. Define $x^{S,*}=x^S(\kappa^*)$ and $\Delta x=x^H-x^{S,*}$. Completing the quadratic in \eqref{eq:utility} gives
 \begin{equation}
 L(s)=\bar U(x^H\mid s)-\bar U(x^{S,*}\mid s)
@@ -48,3 +57,23 @@ A(s)=\frac{\sum_{i=1}^n\sigma_i^2q_i^2(h_i-1)^2}
 \label{eq:alignment}
 \end{equation}
 The statistic weights squared deviations in relative uncertainty by the variance-scaled squared positions of the mean-scalar portfolio. We compare losses across groups of draws with different $A(s)$. Appendix~\ref{app:scalar-sufficiency} derives conditions for exact agreement on held exposures and an upper bound on proportional utility loss. It also shows that, near uniform uncertainty, the loss of the mean scalar is second order in the departure from uniformity. These results characterize when scalar compression can be economically small.
+
+\subsection{The value of estimating asset-specific uncertainty}
+An implementable rule uses an estimate $\widehat\Lambda$ in place of $\Lambda$. Holding the signal, risk matrix and risk aversion fixed, let
+\begin{equation}
+\widehat x^H=\frac{1}{\gamma}(\Sigma+\widehat\Lambda/\tau)^{-1}s,
+\qquad q_\kappa=x^S(\kappa),
+\end{equation}
+where $\widehat\Lambda$ is positive semidefinite. Evaluate both positions using the true conditional utility in equation~\eqref{eq:utility}. Define the restriction cost at the specified scalar and the loss from uncertainty estimation as
+\begin{align}
+L_\kappa&=\bar U(x^H\mid s)-\bar U(q_\kappa\mid s),\\
+P&=\bar U(x^H\mid s)-\bar U(\widehat x^H\mid s)
+=\frac{\gamma}{2}(\widehat x^H-x^H)'\Sigma(\widehat x^H-x^H).
+\label{eq:estimation-penalty}
+\end{align}
+Both quantities are nonnegative. Subtracting the two losses gives
+\begin{equation}
+\bar U(\widehat x^H\mid s)-\bar U(q_\kappa\mid s)=L_\kappa-P.
+\label{eq:estimation-tradeoff}
+\end{equation}
+Estimated asset-specific uncertainty improves the portfolio decision precisely when $P<L_\kappa$. Thus a common parameter can be preferable even when true uncertainty differs across assets. The gain from retaining those differences must exceed the loss caused by estimating them. In the controlled estimation experiment we use $\bar\kappa=\lambda/\tau$, so $L_{\bar\kappa}$ includes both oracle compression loss and the additional choice loss defined above. These quantities use conditional model utility before trading costs. Appendix~\ref{app:scalar-sufficiency} gives the proof.

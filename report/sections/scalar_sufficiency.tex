@@ -45,12 +45,5 @@ q'D_0B^{-1}\Sigma B^{-1}D_0q+O(\theta^3).
 \end{align}
 All other inputs, including $s$, remain fixed in this expansion. The position difference is first order, while the utility loss is second order because the objective is locally flat at its optimum. Reoptimizing the scalar can only reduce this loss. Thus modest uncertainty heterogeneity can have a still smaller utility cost. Separately, multiplying the signal by a constant multiplies both positions by that constant and the absolute loss by its square; proportional loss need not fall. These statements distinguish a small dollar-equivalent effect from a small fraction of optimal utility.
 
-\paragraph{Estimated heterogeneity and practical relevance.}
-Hold $s$, $\Sigma$ and $\gamma$ fixed, and let $\widehat x^H$ be a feasible position obtained from an estimated positive-semidefinite uncertainty matrix. Evaluate every position using the true conditional objective. Define its estimation penalty as $P=\gamma(\widehat x^H-x^H)'\Sigma(\widehat x^H-x^H)/2$. Completing the quadratic once more gives
-\begin{equation}
-\bar U(\widehat x^H\mid s)-\bar U(q_\kappa\mid s)=L_\kappa-P.
-\label{eq:estimation-tradeoff}
-\end{equation}
-Estimated heterogeneity improves utility when its estimation penalty is smaller than the scalar restriction cost. The same comparison holds in conditional expectation over an estimator's sampling distribution. This provides a mathematical rationale for retaining a scalar when its approximation loss is small relative to the error introduced by estimating additional uncertainty structure. It does not require the true uncertainties to be identical.
-
-Equations~\eqref{eq:scalar-bound}--\eqref{eq:estimation-tradeoff} concern model utility and a specified economic tolerance. An empirical confidence interval addresses sampling uncertainty in a performance estimate. A confidence interval containing zero does not establish that the bound is small or that the methods are economically equivalent. The appendix supplies conditions under which small differences are plausible; the historical evaluation reports the evidence for incremental net utility under the implemented rule.
+\paragraph{Proof of the estimation-loss comparison.}
+The completed-square identity in Appendix~\ref{app:math} holds for every position vector. Substituting $\widehat x^H$ gives $\bar U(x^H\mid s)-\bar U(\widehat x^H\mid s)=P$; substituting $q_\kappa$ gives $\bar U(x^H\mid s)-\bar U(q_\kappa\mid s)=L_\kappa$. Subtracting establishes equation~\eqref{eq:estimation-tradeoff}. Conditional expectation over the uncertainty estimator preserves this identity. At fixed $s$ and $\kappa$, expected incremental utility is therefore $L_\kappa-\E[P\mid s]$.
