@@ -59,7 +59,7 @@ For draw $k$, write $s_k$ for the signal, $x_k^H$ for its heterogeneous allocati
 \text{Loss share}=\frac{\overline L}{\overline U^H}.
 \label{eq:simulation-summary}
 \end{equation}
-We express the loss share as a percentage by multiplying by 100. It is a ratio of sample means; individual-draw utility ratios are not averaged. We also report mean additional choice loss. Utility is monthly, and multiplying a utility loss by $10^4$ expresses it in basis points without annualization. Within each fixed profile, draws are divided into thirds by the exposure-alignment statistic in equation~\eqref{eq:alignment}. Appendix~\ref{app:simulation} specifies the seed, conditional Monte Carlo intervals and calibration design.
+We express the loss share as a percentage by multiplying by 100. It is a ratio of sample means; individual-draw utility ratios are not averaged. We also report mean additional choice loss. The model and its utility are monthly. For reporting, we multiply utility levels, losses, Monte Carlo standard errors and interval endpoints by $12\times10^4$ to express them in annual basis points. This is arithmetic annualization of monthly quadratic utility; it does not simulate an additional twelve-month holding process or compound returns. Loss shares are unchanged. These conditional model losses measure the cost of a restriction with known inputs, whereas the historical certainty equivalents summarize realized net returns; the common time unit does not make them interchangeable economic gains. Forecast errors and bootstrap standard errors retain monthly units because they refer to next-month predictions. Within each fixed profile, draws are divided into thirds by the exposure-alignment statistic in equation~\eqref{eq:alignment}. Appendix~\ref{app:simulation} specifies the seed, conditional Monte Carlo intervals and calibration design.
 
 \subsection{Forecasts and relative uncertainty}
 For the historical extension we estimate an intercept and slope separately for each industry by ordinary least squares. At formation date $t$, the regression contains exactly 120 pairs $(z_{i,j},r^e_{i,j+1})$ for $j=t-120,\ldots,t-1$. Writing its coefficients as $\widehat a_{i,t}$ and $\widehat b_{i,t}$, the next-month forecast is
@@ -116,6 +116,14 @@ Numerical ties within $10^{-12}$ select the larger $w$. Both portfolios use this
 
 This design measures the effect of replacing a uniform profile with estimated relative uncertainty at a penalty level selected for the scalar strategy. It holds the selection rule fixed and gives the heterogeneous strategy no extra tuning search. A comparison between separately optimized strategy families is a different estimand. Both empirical rules use the same return data and rolling mean forecasts; the heterogeneous rule additionally requires bootstrap variance estimation, profile normalization and monitoring.
 
+To describe portfolio composition, define gross exposure $g^j_t=\sum_i|x^j_{i,t}|$ for strategy $j\in\{S,H\}$. Gross-normalized composition distance is $\sum_i|x^H_{i,t}/g^H_t-x^S_{i,t}/g^S_t|$. Risk-direction correlation is
+\begin{equation}
+\rho_{Q,t}=\frac{x_t^{S\prime}Q_t x_t^H}
+{\sqrt{x_t^{S\prime}Q_t x_t^S}\sqrt{x_t^{H\prime}Q_t x_t^H}}.
+\label{eq:direction-correlation}
+\end{equation}
+A positive rescaling alone gives distance zero and correlation one. These measures distinguish changes in composition from changes in overall exposure.
+
 \subsection{Trading, evaluation and sensitivity analysis}
 Let $x^-_{i,t}$ denote the position immediately before rebalancing at date $t$, expressed relative to current wealth. Full traded notional is $T_t=\sum_i|x_{i,t}-x^-_{i,t}|$, including liquidation of industries leaving the universe. Short notional is $B_t=\sum_i\max(-x_{i,t},0)$. With trading rate $c=0.001$ per dollar traded and annual short fee $b=0.005$, net excess return is
 \begin{equation}
@@ -150,4 +158,4 @@ R_{\mathrm{OOS}}^2
 \end{equation}
 Here OOS denotes out-of-sample prediction. The ratio pools squared errors over all eligible industry-month observations. A negative value means the fitted forecasts have higher squared error than the historical-mean benchmark. We also calculate the monthly information coefficient as the cross-sectional Spearman correlation between forecasts and next-month excess returns. Intervals for these diagnostics resample whole months in blocks, preserving contemporaneous industry dependence.
 
-Two trading-cost scenarios set $c$ to zero or 0.0025 while retaining the primary selected $w$ sequence and recomputing each strategy's position drift. The short fee remains unchanged. The 60-ready-month admission exercise reruns candidate histories and selection. Finally, a deployment exercise rescales each primary direction to 10\% annual predicted volatility under $Q_t$, then multiplies it by $\min(1,3/\sum_i|x_{i,t}|)$ to impose a gross-exposure cap of three. It retains the primary selected $w$ sequence and has its own trading history. These exercises distinguish uncertainty-profile effects from cost, entry and exposure conventions.
+Two trading-cost scenarios set $c$ to zero or 0.0025 while retaining the primary selected $w$ sequence and recomputing each strategy's position drift. The short fee remains unchanged. The 60-ready-month admission exercise reruns candidate histories and selection. Finally, an exposure sensitivity exercise rescales each primary direction to 10\% annual predicted volatility under $Q_t$, then multiplies it by $\min(1,3/\sum_i|x_{i,t}|)$ to impose a gross-exposure cap of three. It retains the primary selected $w$ sequence and has its own trading history. These exercises distinguish uncertainty-profile effects from cost, entry and exposure conventions.

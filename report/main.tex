@@ -5,7 +5,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb,booktabs,tabularx,longtable,array}
 \usepackage{graphicx,caption,float,microtype}
-\newcommand{\FloatBarrier}{\clearpage}
+\usepackage{placeins}
 \usepackage[authoryear,round]{natbib}
 \usepackage{xcolor}
 \usepackage[hidelinks]{hyperref}
@@ -30,10 +30,10 @@
 \newcommand{\CE}{\operatorname{CE}}
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\R}{\mathbb{R}}
-\newcommand{\reportfigure}[4]{%
-\begin{figure}[!htbp]\centering
-\includegraphics[width=#4\linewidth,height=.72\textheight,keepaspectratio]{#1}
-\caption{#2}\label{#3}\end{figure}}
+\newcommand{\reportfigure}[5][!htbp]{%
+\begin{figure}[#1]\centering
+\includegraphics[width=#5\linewidth,height=.72\textheight,keepaspectratio]{#2}
+\caption{#3}\label{#4}\end{figure}}
 \begin{document}
 \begin{titlepage}
 \thispagestyle{empty}

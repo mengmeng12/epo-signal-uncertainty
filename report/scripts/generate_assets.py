@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import subprocess
 import platform
+import re
 import sys
 from unittest.mock import patch
 
@@ -48,7 +49,19 @@ def read(name, directory=OUT):
     return frame
 
 
-def table(name, caption, label, headers, rows, note="", widths=None):
+def annual_simulation_report() -> pd.DataFrame:
+    """Convert monthly utility summaries once, at the report boundary."""
+    frame = read("compression_loss").copy()
+    utility_columns = [column for column in frame if column.endswith("_bp")]
+    frame[utility_columns] = 12 * frame[utility_columns]
+    return frame
+
+
+def display_year_ranges(text: str, separator: str = "--") -> str:
+    return re.sub(r"(?<!\d)(\d{4})-(\d{4})(?!\d)", rf"\1{separator}\2", text)
+
+
+def table(name, caption, label, headers, rows, note="", widths=None, header_detail=""):
     # Table values are formatted here, never edited in generated TeX.
     spec = widths or ("l" + "r" * (len(headers) - 1))
     body = "\n".join(" & ".join(str(cell) for cell in row) + r" \\" for row in rows)
@@ -69,7 +82,10 @@ def table(name, caption, label, headers, rows, note="", widths=None):
         + r"\toprule"
         + "\n"
         + " & ".join(headers)
-        + r" \\ \midrule"
+        + r" \\"
+        + "\n"
+        + header_detail
+        + r"\midrule"
         + "\n"
         + body
         + "\n"
@@ -84,7 +100,7 @@ def table(name, caption, label, headers, rows, note="", widths=None):
             + "\n"
         )
     text += r"\end{table}" + "\n"
-    (DEST / f"table_{name}.tex").write_text(text)
+    (DEST / f"table_{name}.tex").write_text(display_year_ranges(text))
 
 
 def make_tables(d):
@@ -195,10 +211,7 @@ def make_tables(d):
     )
     p = read("performance_table")
     dep = read("deployment_sensitivity")
-    rows = [
-        ["", r"\multicolumn{2}{c}{1970--2018}", r"\multicolumn{2}{c}{2019--2025}"],
-        ["", "Scalar", "Heterog.", "Scalar", "Heterog."],
-    ]
+    rows = []
     order = [
         (period, strategy)
         for period in periods
@@ -219,7 +232,7 @@ def make_tables(d):
         (r"B. Sensitivity: 10\% predicted-volatility target; gross cap 3", dep, False),
     ]:
         indexed = frame.set_index(["period", "strategy"])
-        rows.append([r"\multicolumn{5}{l}{\textit{" + title + "}}"])
+        rows.append([r"\addlinespace\multicolumn{5}{l}{\textit{" + title + "}}"])
         for label, col, digits in metrics:
             rows.append(
                 [label] + [f"{indexed.loc[key,col]:.{digits}f}" for key in order]
@@ -251,10 +264,20 @@ def make_tables(d):
         "performance",
         "Matched net performance under two exposure policies.",
         "tab:performance",
-        ["Statistic", r"\multicolumn{4}{c}{Evaluation period and strategy}"],
+        [
+            "Statistic",
+            r"\multicolumn{2}{c}{1970--2018}",
+            r"\multicolumn{2}{c}{2019--2025}",
+        ],
         rows,
         r"Each period contains 588 or 84 months. Certainty equivalents use risk aversion 3 in both panels; $\Delta\mathrm{CE}$ is heterogeneous minus scalar. Trading cost is 10 bp per dollar of full traded notional and the annual short fee is 50 bp. Tail loss is monthly expected shortfall of net excess returns; drawdown uses total net wealth. Panel A intervals use 1,000 paired 12-month block resamples. Panel B retains the primary selected penalty sequence with its own position drift and costs; its intervals are not estimated. The volatility target uses predicted risk under the common matrix. Positions continue through the 2019 boundary.",
         "lrrrr",
+        header_detail=(
+            r"\cmidrule(lr){2-3}\cmidrule(lr){4-5}"
+            + "\n"
+            + r" & Scalar & Heterog. & Scalar & Heterog. \\"
+            + "\n"
+        ),
     )
     rob = d["robustness_summary"]
     dep = read("deployment_sensitivity")
@@ -282,7 +305,7 @@ def make_tables(d):
         rows,
         r"Entries are heterogeneous minus scalar certainty equivalents, in annual basis points. Cost scenarios retain the primary selected penalty sequence and recompute position drift. The entry-rule exercise reruns selection. Deployment retains primary selection but rescales positions; its uncertainty interval is not estimated. Appendix~\ref{app:performance} reports intervals for the other scenarios.",
     )
-    c = read("compression_loss")
+    c = annual_simulation_report()
     rows = []
     for _, r in c.iterrows():
         rows.append(
@@ -290,10 +313,17 @@ def make_tables(d):
                 f"{r.target_cv:g}",
                 r["subset"].replace("alignment_", "").replace("all", "All draws"),
                 f"{r.realized_cv:.3f}",
-                f"{r.compression_loss_bp:.2f}",
-                f"{max(0,r.choice_loss_bp):.2f}",
+                f"{r.compression_loss_bp:.0f} ({r.compression_loss_se_bp:.0f})",
+                f"{max(0,r.choice_loss_bp):.0f} ({r.choice_loss_se_bp:.0f})",
                 f"{100*r.compression_loss_share:.1f}",
             ]
+        )
+    intervals = []
+    for row in c[(c["subset"] == "all") & (c.target_cv > 0)].itertuples():
+        intervals.append(
+            f"For target CV {row.target_cv:g}, the 95\\% compression interval is "
+            f"[{row.compression_loss_lo_bp:.0f}, {row.compression_loss_hi_bp:.0f}] "
+            f"and the choice interval is [{row.choice_loss_lo_bp:.0f}, {row.choice_loss_hi_bp:.0f}]."
         )
     table(
         "simulation",
@@ -303,12 +333,13 @@ def make_tables(d):
             "Target CV",
             "Draw group",
             "Actual CV",
-            "Compression",
-            "Choice",
+            "Compression (SE)",
+            "Choice (SE)",
             "Share (\\%)",
         ],
         rows,
-        "Compression and choice losses are in monthly utility basis points. Share is mean compression loss divided by mean heterogeneous utility. Each profile has 1,000 draws; low, middle and high alignment groups contain 334, 333 and 333 draws. CV denotes coefficient of variation.",
+        "Compression and choice losses and their Monte Carlo standard errors (SE) are in annual utility basis points: twelve times the monthly quantities. Share is mean compression loss divided by mean heterogeneous utility. Each profile has 1,000 draws; low, middle and high alignment groups contain 334, 333 and 333 draws. CV denotes coefficient of variation. "
+        + " ".join(intervals),
         "llrrrr",
     )
     c = read("estimator_calibration")
@@ -339,9 +370,9 @@ def make_tables(d):
     c = read("benchmark/convention_steps")
     labels = [
         "Published Equity 1 result",
-        "Published procedure; zero-filled month",
+        "Expanding selector; zero-filled month",
         "Common evaluation months",
-        "Project candidate grid",
+        "Seven-value candidate grid",
         "10\\% predicted-volatility scaling",
         "Annual trailing-window selection",
     ]
@@ -358,12 +389,12 @@ def make_tables(d):
             ]
             for l, (_, r) in zip(labels, c.iterrows())
         ],
-        r"The sequence changes one implemented convention at a time on the current data vintage. It is an order-dependent accounting exercise. The zero-filled row is a diagnostic scenario; the primary replication does not fill a held missing return. The first row is from \citet{pedersen2021}.",
+        r"The sequence changes one implemented convention at a time on the current data vintage. It is an order-dependent accounting exercise. The expanding selector follows the monthly rule described by \citet[p.~138, Figure~2 and accompanying text]{pedersen2021}; applying it to Equity~1 is the diagnostic interpretation explained above. The zero-filled row is a diagnostic scenario; the primary replication does not fill a held missing return. The first row is the published Equity~1 result (p.~142, Table~5).",
     )
     f = read("benchmark/convention_steps_fixed")
     labels = [
         "Published Equity 1 result",
-        "Published procedure; zero-filled month",
+        "Unscaled positions; zero-filled month",
         "Common evaluation months",
         "10\\% predicted-volatility scaling",
     ]
@@ -414,6 +445,7 @@ def make_figures(d):
                 False
             )  # Retain layout ownership; the manuscript supplies captions.
         for artist in fig.findobj(Text):
+            artist.set_text(display_year_ranges(artist.get_text(), "–"))
             if artist.get_visible():
                 artist.set_fontsize(max(12, artist.get_fontsize()))
         if name == "estimator_calibration":
@@ -436,8 +468,44 @@ def make_figures(d):
             fig.axes[1].set_title(
                 "Grouped by estimated variance", loc="left", fontsize=12
             )
+        if name == "compression_loss":
+            fig.set_size_inches(11, 4.5)
+            fig.axes[0].set_title("Expected utility loss", loc="left")
+            fig.axes[1].set_title("Loss by exposure alignment", loc="left")
+            for ax in fig.axes:
+                ax.set_ylabel("Annual utility loss (bp)")
+            fig.tight_layout(w_pad=2)
+        if name == "portfolio_transmission":
+            # Reuse the exact plotted series, placing composition in the main text
+            # and exposure levels in the appendix without duplicating panels.
+            axes = list(fig.axes)
+            fig.set_size_inches(11, 3.8)
+            boxes = [(0.08, 0.18, 0.39, 0.70), (0.59, 0.18, 0.39, 0.70)]
+            for ax in axes[:2]:
+                ax.set_visible(False)
+            for ax, box in zip(axes[2:], boxes):
+                ax.set_position(box)
+            axes[2].set_title("Gross-normalized composition distance", fontsize=12)
+            axes[3].set_title("Risk-direction correlation", fontsize=12)
+            original(
+                fig,
+                DEST / "portfolio_composition.pdf",
+                format="pdf",
+                bbox_inches="tight",
+                facecolor="white",
+            )
+            for ax in axes[2:]:
+                ax.set_visible(False)
+            for ax, box in zip(axes[:2], boxes):
+                ax.set_visible(True)
+                ax.set_position(box)
+                ax.set_xlabel("Realization month")
         if name == "problem_pc":
             fig.subplots_adjust(hspace=0.48, bottom=0.09, top=0.96)
+            sharpe = fig.axes[2]
+            sharpe.set_ylim(-0.12, max(0.65, sharpe.get_ylim()[1]))
+            sharpe.set_yticks(np.arange(-0.1, 0.7, 0.1))
+            sharpe.axhline(0, color="#52514e", linewidth=0.8)
             for ax in fig.axes:
                 ax.set_xticks(
                     range(1, 6), ["G1\n(smallest)", "G2", "G3", "G4", "G5\n(largest)"]
@@ -454,7 +522,7 @@ def make_figures(d):
         replication.plot_diagnostics(
             read("problem_pc_diagnostics").set_index("eigenvalue_group")
         )
-        simulation.plot_loss(read("compression_loss"))
+        simulation.plot_loss(annual_simulation_report())
         simulation.plot_calibration(read("estimator_calibration"))
         evaluation.plot_equity(read("equity_curves"))
         diagnostic_plots.plot_all(
@@ -521,6 +589,7 @@ def main():
         "reliability_industry_year",
         "reliability_summary",
         "portfolio_monthly",
+        "portfolio_summary",
         "ce_decomposition",
         "robustness_summary",
     ]
@@ -579,6 +648,12 @@ def main():
     )
     files = sorted(INPUTS | set(code))
     manifest = {
+        "report_units": {
+            "simulation_utility": "annual basis points; 12 times monthly utility",
+            "simulation_intervals_and_standard_errors": "same factor of 12",
+            "forecast_error_and_bootstrap_standard_error": "monthly basis points",
+            "simulation_loss_shares": "unchanged ratio of means",
+        },
         "runtime": {
             "python": platform.python_version(),
             "numpy": np.__version__,
