@@ -35,7 +35,12 @@ from epo_project import (
 )
 
 from label_placebo import run as run_label_placebo, DEST as PLACEBO_DIR
-from uncertainty_value import run as run_uncertainty_value, DEST as VALUE_DIR
+from uncertainty_value import (
+    run as run_uncertainty_value,
+    DEST as VALUE_DIR,
+    utility_share,
+)
+from calibration_bridge import run as run_calibration_bridge, DEST as BRIDGE_DIR
 
 INPUTS: set[Path] = set()
 
@@ -276,7 +281,7 @@ def make_tables(d):
             )
     table(
         "performance",
-        "Matched net performance under two exposure policies.",
+        "Matched net performance under two position-sizing rules.",
         "tab:performance",
         [
             "Statistic",
@@ -294,30 +299,109 @@ def make_tables(d):
         ),
     )
     rob = d["robustness_summary"]
-    dep = read("deployment_sensitivity")
+    targeted = read("targeted_cost_summary", BRIDGE_DIR)
     rows = []
-    for scenario, label in [
-        ("primary_10bp", "Primary: 10 bp trading cost"),
-        ("frozen_w_0bp", "Zero trading cost; fixed selection"),
-        ("frozen_w_25bp", "25 bp trading cost; fixed selection"),
-        ("admission_60", "60 ready months; reselected penalty"),
+    for scenario, cost in [
+        ("frozen_w_0bp", 0),
+        ("primary_10bp", 10),
+        ("frozen_w_25bp", 25),
     ]:
-        sub = rob[(rob.scenario == scenario) & (rob.strategy == "scalar")].set_index(
+        fixed = rob[(rob.scenario == scenario) & (rob.strategy == "scalar")].set_index(
             "period"
         )
-        rows.append([label] + [f'{sub.loc[p,"delta_ce_bp_year"]:.2f}' for p in periods])
-    sub = dep[dep.strategy == "heterogeneous"].set_index("period")
+        sized = targeted[
+            (targeted.cost_bp == cost) & (targeted.block_months == 12)
+        ].set_index("period")
+        rows.append(
+            [f"Trading cost: {cost} bp"]
+            + [
+                f"{frame.loc[period, 'delta_ce_bp_year']:.2f}"
+                for period in periods
+                for frame in (fixed, sized)
+            ]
+        )
+    admission = rob[
+        (rob.scenario == "admission_60") & (rob.strategy == "scalar")
+    ].set_index("period")
     rows.append(
-        ["10\\% volatility target; gross cap 3"]
-        + [f'{sub.loc[p,"delta_ce_bp_year"]:.2f}' for p in periods]
+        [r"\addlinespace\multicolumn{5}{l}{\textit{Supporting eligibility comparison}}"]
+    )
+    rows.append(
+        ["60 ready months"]
+        + [
+            cell
+            for period in periods
+            for cell in (f"{admission.loc[period, 'delta_ce_bp_year']:.2f}", "---")
+        ]
     )
     table(
         "robustness",
-        "Sensitivity of the annual net utility difference.",
+        "Trading-cost sensitivity under both position-sizing rules.",
         "tab:robustness",
-        ["Specification", *periods],
+        [
+            "Specification",
+            r"\multicolumn{2}{c}{1970--2018}",
+            r"\multicolumn{2}{c}{2019--2025}",
+        ],
         rows,
-        r"Entries are heterogeneous minus scalar certainty equivalents, in annual basis points. Cost and entry-rule scenarios use fixed risk aversion. Cost scenarios retain the selected penalty sequence and recompute position drift; the entry-rule exercise reruns selection. The last row uses common position sizing at the original selected penalties. Table~\ref{tab:performance} gives its interval; Appendix~\ref{app:performance} reports the other sensitivity intervals.",
+        r"Entries are heterogeneous-minus-scalar net certainty equivalent differences in annual bp. Target/cap applies the 10\% predicted-volatility target and gross cap of three. Cost scenarios retain the selected penalty sequence and recompute drift, turnover and costs separately under each rule. The annual short fee remains 50 bp. The supporting 60-ready-month exercise uses fixed $\gamma$ and reselects the penalty; dashes identify the position-sizing rule outside that comparison. Appendix~\ref{app:performance} reports the targeted cost intervals.",
+        "lrrrr",
+        header_detail=r"\cmidrule(lr){2-3}\cmidrule(lr){4-5}"
+        + "\n"
+        + r" & Fixed $\gamma$ & Target/cap & Fixed $\gamma$ & Target/cap \\"
+        + "\n",
+    )
+    cost_rows = [
+        [
+            r.period,
+            f"{r.cost_bp:g}",
+            f"{r.scalar_ce_bp_year:.2f}",
+            f"{r.heterogeneous_ce_bp_year:.2f}",
+            f"{r.delta_ce_bp_year:.2f}",
+            f"[{r.ci_lower_bp_year:.2f}, {r.ci_upper_bp_year:.2f}]",
+        ]
+        for r in targeted[targeted.block_months == 12].itertuples()
+    ]
+    table(
+        "targeted_costs",
+        "Net utility under targeted positions at alternative trading costs.",
+        "tab:targeted-costs",
+        [
+            "Period",
+            "Cost",
+            "Scalar",
+            "Heterog.",
+            r"$\Delta\mathrm{CE}$",
+            r"95\% interval",
+        ],
+        cost_rows,
+        r"Cost is bp per dollar traded. Utilities and differences are annual bp. Intervals use 1,000 paired moving-block bootstrap samples with 12-month blocks. Selection is held fixed across cost rates, with each strategy's turnover recomputed from its own drifted positions.",
+        "lrrrrr",
+    )
+    calibration = read("calibration_log_error", BRIDGE_DIR)
+    table(
+        "calibration_error",
+        "Relative-uncertainty log error in estimator calibration.",
+        "tab:calibration-error",
+        [
+            "Feedback",
+            "$a_{\\mathrm{cal}}$",
+            "Median SD",
+            "5th--95th percentile",
+            "True/reference CV",
+        ],
+        [
+            [
+                f"{r.feedback:g}",
+                f"{r.implied_a:.3f}",
+                f"{r.median_log_error_sd:.3f}",
+                f"[{r.p05_log_error_sd:.3f}, {r.p95_log_error_sd:.3f}]",
+                f"{100*r.mean_reference_cv:.1f}\\%",
+            ]
+            for r in calibration.itertuples()
+        ],
+        r"Each design contains 1,000 histories of 49 assets. SD is the within-history sample standard deviation of $\log(\widehat h/h^\star)$. $a_{\mathrm{cal}}$ is the square root of its mean squared value. Quantiles summarize history-specific SDs, not confidence limits for $a_{\mathrm{cal}}$. The zero-feedback reference uses the exact conditional OLS variance; feedback 0.4 uses an analytical reference. CV is the mean within-history coefficient of variation of normalized reference uncertainty. Figure~\ref{fig:estimation-tradeoff} uses the zero-feedback value.",
+        "lrrrr",
     )
     c = annual_simulation_report()
     rows = []
@@ -429,23 +513,28 @@ def make_tables(d):
         r"Rows follow Table~\ref{tab:conventions} without the selection steps. The second row uses unscaled positions, as the published values are invariant to the paper's constant ex post volatility scaling. The first row is from \citet{pedersen2021}.",
         "lrrr",
     )
-    dce = read("delta_ce_summary")
+    dce = read("delta_ce_summary").assign(policy=r"Fixed $\gamma$")
+    sized_intervals = targeted[targeted.cost_bp == 10].assign(policy="Target/cap")
+    combined = pd.concat([dce, sized_intervals], ignore_index=True)
     table(
         "intervals",
-        "Block-length sensitivity of the net utility difference.",
+        "Block-length sensitivity under both position-sizing rules.",
         "tab:intervals",
-        ["Period", "Block months", "Difference", "95\\% interval"],
+        ["Period", "Position sizing", "Block months", "Difference", r"95\% interval"],
         [
             [
                 r.period,
+                r.policy,
                 str(r.block_months),
                 f"{r.delta_ce_bp_year:.2f}",
                 f"[{r.ci_lower_bp_year:.2f}, {r.ci_upper_bp_year:.2f}]",
             ]
-            for r in dce.itertuples()
+            for r in combined.sort_values(
+                ["period", "policy", "block_months"]
+            ).itertuples()
         ],
-        "Differences and interval endpoints are annual basis points; each interval uses 1,000 paired resamples.",
-        "lrrr",
+        "Differences and interval endpoints are annual bp at a trading-cost rate of 10 bp per dollar. Each interval uses 1,000 paired moving-block bootstrap samples. Target/cap uses a 10\\% predicted-volatility target and gross cap of three.",
+        "llrrr",
     )
 
 
@@ -459,9 +548,24 @@ def make_figures(d):
                 False
             )  # Retain layout ownership; the manuscript supplies captions.
         for artist in fig.findobj(Text):
-            artist.set_text(display_year_ranges(artist.get_text(), "–"))
+            artist.set_text(
+                display_year_ranges(
+                    artist.get_text()
+                    .replace("12 months (primary)", "12 months (baseline)")
+                    .replace("10 bp; primary", "10 bp; baseline"),
+                    "–",
+                )
+            )
             if artist.get_visible():
                 artist.set_fontsize(max(12, artist.get_fontsize()))
+        if name in ("delta_ce_intervals", "robustness"):
+            # FixedFormatter regenerates tick text when drawing; update its labels.
+            for ax in fig.axes:
+                labels = [
+                    tick.get_text().replace("primary", "baseline")
+                    for tick in ax.get_yticklabels()
+                ]
+                ax.set_yticks(ax.get_yticks(), labels, fontsize=12)
         if name == "estimator_calibration":
             fig.set_size_inches(9.5, 7.7)
             for ax in fig.axes[:2]:
@@ -482,13 +586,6 @@ def make_figures(d):
             fig.axes[1].set_title(
                 "Grouped by estimated variance", loc="left", fontsize=12
             )
-        if name == "compression_loss":
-            fig.set_size_inches(11, 4.5)
-            fig.axes[0].set_title("Expected utility loss", loc="left")
-            fig.axes[1].set_title("Loss by exposure alignment", loc="left")
-            for ax in fig.axes:
-                ax.set_ylabel("Annual utility loss (bp)")
-            fig.tight_layout(w_pad=2)
         if name == "portfolio_transmission":
             # Reuse the exact plotted series, placing composition in the main text
             # and exposure levels in the appendix without duplicating panels.
@@ -536,7 +633,7 @@ def make_figures(d):
         replication.plot_diagnostics(
             read("problem_pc_diagnostics").set_index("eigenvalue_group")
         )
-        simulation.plot_loss(annual_simulation_report())
+        # Main simulation figures are generated directly in utility-share units.
         simulation.plot_calibration(read("estimator_calibration"))
         evaluation.plot_equity(read("equity_curves"))
         diagnostic_plots.plot_all(
@@ -564,6 +661,78 @@ def make_figures(d):
             list(range(1944, 1949)),
         )
     plt.close("all")
+
+
+def make_compression_figure():
+    draws = read("simulation_draws")
+    summaries = []
+    for cv, part in draws.groupby("target_cv", sort=True):
+        groups = [("all", part)]
+        if cv > 0:
+            tercile = simulation.alignment_terciles(part.alignment)
+            groups += [
+                (name, part.loc[tercile == name]) for name in ("low", "middle", "high")
+            ]
+        for name, group in groups:
+            row = {
+                "target_cv": cv,
+                "realized_cv": group.realized_cv.iloc[0],
+                "subset": name,
+            }
+            for col in ("compression_loss", "choice_loss"):
+                share, se = utility_share(
+                    group[col].to_numpy(), group.utility_het.to_numpy()
+                )
+                row[col] = max(0, share)
+                row[col + "_se"] = se
+            summaries.append(row)
+    summary = pd.DataFrame(summaries)
+    summary.to_csv(DEST / "simulation_shares.csv", index=False)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.7), layout="constrained")
+    all_draws = summary[summary.subset == "all"]
+    positions = np.arange(len(all_draws))
+    for offset, col, label, color in [
+        (-0.19, "compression_loss", "Compression (best scalar)", "#2a78d6"),
+        (0.19, "choice_loss", "Additional choice loss", "#eb6834"),
+    ]:
+        axes[0].bar(
+            positions + offset,
+            all_draws[col],
+            width=0.35,
+            yerr=1.96 * all_draws[col + "_se"],
+            capsize=3,
+            color=color,
+            label=label,
+        )
+    axes[0].set_xticks(positions, [f"{100*x:.0f}%" for x in all_draws.realized_cv])
+    axes[0].set(xlabel="True uncertainty CV", title="Loss from scalar restriction")
+    for offset, cv, color in [(-0.19, 0.5, "#2a78d6"), (0.19, 1, "#eb6834")]:
+        part = summary[(summary.target_cv == cv) & (summary.subset != "all")]
+        axes[1].bar(
+            np.arange(3) + offset,
+            part.compression_loss,
+            width=0.35,
+            yerr=1.96 * part.compression_loss_se,
+            capsize=3,
+            color=color,
+            label=f"True CV: {100*part.realized_cv.iloc[0]:.0f}%",
+        )
+    axes[1].set_xticks(range(3), ["Low", "Middle", "High"])
+    axes[1].set(
+        xlabel="Exposure-alignment group", title="Compression by exposure alignment"
+    )
+    for ax in axes:
+        ax.set_ylabel("Share of mean oracle utility (%)", fontsize=12)
+        ax.set_ylim(bottom=0)
+        ax.set_axisbelow(True)
+        ax.grid(axis="y", color="#e4e3df", linewidth=0.6)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.tick_params(labelsize=12)
+        ax.xaxis.label.set_fontsize(12)
+        ax.title.set_fontsize(14)
+        ax.legend(loc="upper left", frameon=False, fontsize=10)
+    fig.savefig(DEST / "compression_loss.pdf", bbox_inches="tight")
+    plt.close(fig)
 
 
 def make_value_assets():
@@ -637,7 +806,7 @@ def make_value_assets():
         rows.append(
             [
                 f"{100*r.realized_cv:.0f}",
-                f"{r.error_sd:g}",
+                f"{r.error_sd:.3f}".rstrip("0").rstrip("."),
                 rounded(r.scalar_loss_bp_year),
                 rounded(r.estimation_penalty_bp_year),
                 rounded(r.net_gain_bp_year),
@@ -659,10 +828,14 @@ def make_value_assets():
             r"$P<L_{\bar\kappa}$ (\%)",
         ],
         rows,
-        r"CV is the realized coefficient of variation of true relative uncertainty. $a$ is the log standard deviation of the multiplicative estimation error. Utilities and interval endpoints are annual bp; entries are means across 1,000 paired draws. Intervals equal the mean plus or minus 1.96 Monte Carlo standard errors. The last column reports the fraction of draws with a positive gain, using a monthly numerical tolerance of $10^{-12}$. The common scalar is $\bar\kappa=\lambda/\tau=2.5$. Each error level uses the same true uncertainty, signals and standard-normal estimation errors.",
+        r"CV is the realized coefficient of variation of true relative uncertainty. $a$ is the log standard deviation of the multiplicative estimation error. Utilities and interval endpoints are annual bp; entries are means across 1,000 paired draws. Intervals equal the mean plus or minus 1.96 Monte Carlo standard errors. The last column reports the fraction of draws with a positive gain, using a monthly numerical tolerance of $10^{-12}$. The common scalar is $\bar\kappa=\lambda/\tau=2.5$. Each error level uses the same true uncertainty, signals and standard-normal estimation errors. The additional level $a=0.414$ matches calibration log-error dispersion; calculations use its unrounded value.",
         "rrrrrrr",
     )
 
+    calibration = read("calibration_log_error", BRIDGE_DIR)
+    calibrated_a = float(
+        calibration.loc[calibration.feedback == 0, "implied_a"].iloc[0]
+    )
     colors = ["#2a78d6", "#eb6834", "#23866b"]
     fig, axes = plt.subplots(1, 3, figsize=(10, 4.4), layout="constrained", sharey=True)
     for ax, (_, part) in zip(axes, summary.groupby("target_cv", sort=True)):
@@ -678,8 +851,8 @@ def make_value_assets():
         ):
             ax.errorbar(
                 part.error_sd,
-                part[f"{col}_bp_year"],
-                yerr=1.96 * part[f"{col}_se_bp_year"],
+                part[f"{col}_share_pct"],
+                yerr=1.96 * part[f"{col}_share_se_pct"],
                 label=label,
                 color=color,
                 marker=marker,
@@ -687,6 +860,13 @@ def make_value_assets():
                 linewidth=1.8,
             )
         ax.axhline(0, color="#555555", linewidth=0.8)
+        ax.axvline(
+            calibrated_a,
+            color="#555555",
+            linestyle="--",
+            linewidth=1.3,
+            label=rf"Calibration $a={calibrated_a:.3f}$",
+        )
         ax.set(
             title=f"True uncertainty CV: {100*part.realized_cv.iloc[0]:.0f}%",
             xlabel=r"Error log SD $a$",
@@ -697,10 +877,10 @@ def make_value_assets():
         ax.tick_params(labelsize=13)
         ax.grid(axis="y", color="#e4e3df", linewidth=0.6)
         ax.spines[["top", "right"]].set_visible(False)
-    axes[0].set_ylabel("Annual model utility (bp)", fontsize=14)
+    axes[0].set_ylabel("Share of mean oracle utility (%)", fontsize=13)
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(
-        handles, labels, loc="outside lower center", ncol=3, frameon=False, fontsize=13
+        handles, labels, loc="outside lower center", ncol=2, frameon=False, fontsize=12
     )
     fig.savefig(DEST / "estimation_tradeoff.pdf", bbox_inches="tight")
     plt.close(fig)
@@ -763,6 +943,17 @@ def main():
         run_label_placebo()
     INPUTS.add(PLACEBO_DIR / "manifest.json")
     if not diagnostics_current(
+        BRIDGE_DIR,
+        [
+            "calibration_log_error",
+            "targeted_cost_summary",
+            "relative_uncertainty_draws",
+            "targeted_cost_returns",
+        ],
+    ):
+        run_calibration_bridge()
+    INPUTS.add(BRIDGE_DIR / "manifest.json")
+    if not diagnostics_current(
         VALUE_DIR,
         [
             "error_simulation_summary",
@@ -773,6 +964,7 @@ def main():
     ):
         run_uncertainty_value()
     INPUTS.add(VALUE_DIR / "manifest.json")
+    make_compression_figure()
     make_value_assets()
     make_tables(data)
     make_figures(data)
@@ -785,10 +977,10 @@ def main():
     files = sorted(INPUTS | set(code))
     manifest = {
         "report_units": {
-            "simulation_utility": "annual basis points; 12 times monthly utility",
+            "simulation_utility": "main figures/text: percent of mean oracle utility; appendix: annual basis points, 12 times monthly utility",
             "simulation_intervals_and_standard_errors": "same factor of 12",
             "forecast_error_and_bootstrap_standard_error": "monthly basis points",
-            "simulation_loss_shares": "unchanged ratio of means",
+            "simulation_loss_shares": "ratio of means; paired delta-method Monte Carlo standard errors",
         },
         "runtime": {
             "python": platform.python_version(),
@@ -806,7 +998,7 @@ def main():
         "outputs_sha256": {
             p.name: hashlib.sha256(p.read_bytes()).hexdigest()
             for p in sorted(DEST.glob("*"))
-            if p.suffix in (".pdf", ".tex")
+            if p.suffix in (".pdf", ".tex", ".csv")
         },
     }
     (DEST / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")

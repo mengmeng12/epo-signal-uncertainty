@@ -20,6 +20,7 @@ from epo_project.reliability import moving_block_indices
 
 DEST = ROOT / "report/generated/uncertainty_value"
 PLACEBO = ROOT / "report/generated/label_placebo"
+BRIDGE = ROOT / "report/generated/calibration_bridge"
 ERROR_LEVELS = (0.0, 0.5, 1.0)
 ERROR_SEED = 20261112
 INTERVAL_SEED = cfg.EVAL_SEED
@@ -29,6 +30,7 @@ INPUTS = [
     ROOT / "output/deployment_sensitivity.csv",
     PLACEBO / "label_placebo_returns.csv",
     PLACEBO / "label_placebo_summary.csv",
+    BRIDGE / "calibration_log_error.csv",
     *[
         ROOT / "src/epo_project" / f"{name}.py"
         for name in ("config", "simulation", "reliability", "evaluation")
@@ -43,6 +45,21 @@ def utility(positions: np.ndarray, mean: np.ndarray, sigma: np.ndarray) -> np.nd
     )
 
 
+def utility_share(values: np.ndarray, oracle: np.ndarray) -> tuple[float, float]:
+    """Ratio of means and paired delta-method Monte Carlo SE, in percent."""
+    values, oracle = np.asarray(values), np.asarray(oracle)
+    if (
+        values.shape != oracle.shape
+        or values.ndim != 1
+        or len(values) < 2
+        or oracle.mean() <= 0
+    ):
+        raise ValueError("Require paired draws with positive mean oracle utility.")
+    ratio = values.mean() / oracle.mean()
+    se = (values - ratio * oracle).std(ddof=1) / (np.sqrt(len(values)) * oracle.mean())
+    return 100 * ratio, 100 * se
+
+
 def controlled_error() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     """Reuse the original fixed profiles/signals; independently perturb h only."""
     rng = np.random.default_rng(cfg.SIM_SEED)
@@ -55,6 +72,11 @@ def controlled_error() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     kappa = cfg.SIM_MEAN_LAMBDA / cfg.SIM_TAU
     scalar_matrix = sigma + kappa * np.diag(variances)
     old = pd.read_csv(ROOT / "output/simulation_draws.csv")
+    calibration = pd.read_csv(BRIDGE / "calibration_log_error.csv")
+    calibrated_a = float(
+        calibration.loc[calibration.feedback == 0, "implied_a"].iloc[0]
+    )
+    error_levels = sorted({*ERROR_LEVELS, calibrated_a})
     frames = []
     max_identity_error = 0.0
     max_control_error = 0.0
@@ -79,7 +101,7 @@ def controlled_error() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
             max_control_error = max(
                 max_control_error, float(np.max(np.abs(actual - expected)))
             )
-        for a in ERROR_LEVELS:
+        for a in error_levels:
             estimates = h * np.exp(a * noise - a * a / 2)
             estimates /= estimates.mean(axis=1, keepdims=True)
             assert (estimates > 0).all()
@@ -130,17 +152,20 @@ def controlled_error() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
         for name in ("oracle_utility", "scalar_loss", "estimation_penalty", "net_gain"):
             values = part[name].to_numpy()
             mean, se = values.mean(), values.std(ddof=1) / np.sqrt(len(values))
+            share, share_se = utility_share(values, part.oracle_utility.to_numpy())
             row.update(
                 {
                     f"{name}_bp_year": 12e4 * mean,
                     f"{name}_se_bp_year": 12e4 * se,
                     f"{name}_lower_bp_year": 12e4 * (mean - 1.96 * se),
                     f"{name}_upper_bp_year": 12e4 * (mean + 1.96 * se),
-                    f"{name}_share_pct": 100 * mean / part.oracle_utility.mean(),
+                    f"{name}_share_pct": share,
+                    f"{name}_share_se_pct": share_se,
                 }
             )
         rows.append(row)
     audit = {
+        "calibration_implied_a": calibrated_a,
         "max_identity_error_monthly": max_identity_error,
         "max_original_utility_control_error_monthly": max_control_error,
     }
@@ -270,7 +295,7 @@ def run(destination: Path = DEST) -> dict:
     ]:
         frame.to_csv(destination / f"{name}.csv", index=False, float_format="%.12g")
     manifest = {
-        "error_levels": ERROR_LEVELS,
+        "error_levels": sorted(summary.error_sd.unique().tolist()),
         "error_seed": ERROR_SEED,
         "interval_seed": INTERVAL_SEED,
         "simulation_seed": cfg.SIM_SEED,
