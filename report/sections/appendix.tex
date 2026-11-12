@@ -23,7 +23,7 @@ Suppress the formation-date subscript and write $R=V^{-1/2}QV^{-1/2}$. Let $d_k$
 \label{app:simulation}
 \setcounter{table}{0}\setcounter{figure}{0}
 \subsection{Profile generation and Monte Carlo summaries}
-For target coefficient of variation $c>0$, draw independent standard normals $v_i$, set $\ell=\sqrt{\log(1+c^2)}$ and generate $h_i$ proportional to $\exp(\ell v_i-\ell^2/2)$, normalized to mean one. Set $h_i=1$ when $c=0$. Profiles are drawn before the common return and signal-error innovations. The simulation seed is 20261023. A mean-loss standard error is the sample standard deviation across signal draws divided by the square root of the draw count; the displayed interval is the mean plus or minus 1.96 standard errors. Alignment groups use a stable ascending sort and equal-count splitting. Table~\ref{tab:simulation} reports both actual and target dispersions.
+Profiles follow equation~\eqref{eq:simulation-profile} and are drawn before the common return and signal-error innovations. Each profile remains fixed across signal draws; equation~\eqref{eq:simulation-summary} defines the reported mean and proportional losses. The simulation seed is 20261023. A mean-loss standard error is the sample standard deviation across signal draws divided by the square root of the draw count; the displayed interval is the mean plus or minus 1.96 standard errors. Alignment groups use a stable ascending sort and equal-count splitting. Table~\ref{tab:simulation} reports both actual and target dispersions.
 \input{generated/table_simulation}
 
 \subsection{Calibration data-generating process}

@@ -10,20 +10,56 @@ Let $r_{i,t}$ be industry $i$'s total return, $r_{f,t}$ the risk-free return and
 Q_t=0.95\widehat\Sigma_t+0.05V_t.
 \label{eq:risk}
 \end{equation}
-The diagonal is unchanged. This fixed preliminary correction follows the implemented EPO benchmark; it is separate from the subsequently selected uncertainty adjustment.
+The diagonal is unchanged. This fixed preliminary correction follows the implemented EPO benchmark. The matrix $Q_t$ measures return covariance risk, while the subsequent uncertainty adjustment modifies the allocation to account for signal uncertainty.
 
-The momentum score is the compounded total return over months $t-11$ through $t$. We subtract its cross-sectional mean and scale the positive and negative scores so that they sum to $+1$ and $-1$, respectively. Denote the resulting score by $z_{i,t}$. This score supplies the benchmark signal and the predictor for the extension. It is formed on the benchmark universe before applying the extension's stricter forecast eligibility rule. Appendix~\ref{app:data} specifies the data vintage and benchmark sample accounting.
+We first compute each industry's compounded total return over months $t-11$ through $t$. We subtract its cross-sectional mean and scale the positive and negative scores so that they sum to $+1$ and $-1$, respectively. Denote the resulting score by $z_{i,t}$. The benchmark uses this normalized momentum score directly as its signal. The extension uses the score as a predictor in a rolling regression to estimate next-month expected excess returns. The score is formed on the benchmark universe before applying the extension's stricter forecast eligibility rule. Appendix~\ref{app:data} specifies the data vintage and benchmark sample accounting.
 \input{generated/table_design}
 
 \subsection{Replication design}
-Raw mean--variance optimization uses the direction $\widehat\Sigma_t^{-1}z_t$. The corrected baseline uses $Q_t^{-1}z_t$, and the EPO candidates use $[(1-w)Q_t+wV_t]^{-1}z_t$, with $w\in\{0,0.25,0.50,0.75,0.90,0.95,0.99\}$. Each direction is scaled to 10\% annual predicted volatility under $Q_t$. The reported benchmark returns are gross excess returns. In January of each year we choose the candidate with the largest annualized gross Sharpe ratio over the preceding 60 complete calendar months. Ties within $10^{-12}$ select the larger $w$. The selected value remains fixed for that year, while signals and positions update monthly. A common valid-month intersection is used for the reported comparison.
+The benchmark compares raw mean--variance optimization, its covariance-corrected baseline and EPO. Their unscaled portfolio directions are
+\begin{equation}
+\begin{aligned}
+d_t^{\mathrm{raw}}&=\widehat\Sigma_t^{-1}z_t,\\
+d_t^{Q}&=Q_t^{-1}z_t,\\
+d_t^{\mathrm{EPO}}(w)&=[(1-w)Q_t+wV_t]^{-1}z_t,
+\end{aligned}
+\label{eq:benchmark-directions}
+\end{equation}
+where $w\in\{0,0.25,0.50,0.75,0.90,0.95,0.99\}$. Let $j$ index these benchmark rules, including each fixed-$w$ EPO candidate. For a nonzero direction $d_t^{(j)}$, the actual position vector is
+\begin{equation}
+x_t^{(j)}=
+\frac{v_{\mathrm{target}}}
+{\sqrt{12\,d_t^{(j)\prime}Q_t d_t^{(j)}}}\,d_t^{(j)},
+\qquad v_{\mathrm{target}}=0.10.
+\label{eq:benchmark-scaling}
+\end{equation}
+A zero direction remains a zero position. Because $Q_t$ is a monthly covariance matrix, the factor 12 converts predicted variance to annual units. All benchmark rules therefore use the same risk matrix for their 10\% predicted-volatility target, including the raw optimizer. The empirical extension's primary comparison instead fixes risk aversion, as specified below. The reported benchmark returns are gross excess returns. In January of each year we choose the candidate with the largest annualized gross Sharpe ratio over the preceding 60 complete calendar months. Ties within $10^{-12}$ select the larger $w$. The selected value remains fixed for that year, while signals and positions update monthly. A common valid-month intersection is used for the reported comparison.
 
 We also reproduce the principal-component mechanism. Each month we diagonalize the correlation matrix $V_t^{-1/2}Q_tV_t^{-1/2}$, order its eigenvalues from smallest to largest and place components into five groups. For each group we compare predicted and realized risk, signal-implied and realized performance, and the share of predicted portfolio variance. These diagnostics distinguish the contribution of small-eigenvalue directions from the aggregate performance comparison. Appendix~\ref{app:math} defines the component statistics exactly.
 
 \subsection{Known-uncertainty simulation}
-The first experiment implements equations~\eqref{eq:model}--\eqref{eq:loss} with $n=49$, $\gamma=3$, $\tau=0.04$ and $\lambda=0.10$. Every asset has monthly volatility 0.05 and every pair has correlation 0.30. For each target cross-sectional coefficient of variation, 0, 0.5 or 1, we draw one positive lognormal uncertainty profile and normalize its mean to one. We hold this profile fixed across 1,000 signal draws. Actual profile dispersions are reported alongside their targets. The same underlying standard-normal innovations generate expected returns and signal errors across profiles.
+The first experiment implements equations~\eqref{eq:model}--\eqref{eq:loss} with $n=49$, $\gamma=3$, $\tau=0.04$ and $\lambda=0.10$. Every asset has monthly volatility 0.05 and every pair has correlation 0.30. For each target cross-sectional coefficient of variation $c\in\{0,0.5,1\}$, we construct a positive uncertainty profile with mean one. For $c>0$, draw independent $v_i\sim N(0,1)$ and set
+\begin{equation}
+\ell_c=\sqrt{\log(1+c^2)},
+\qquad
+h_i=\frac{\exp(\ell_c v_i-\ell_c^2/2)}
+{n^{-1}\sum_{j=1}^{n}\exp(\ell_c v_j-\ell_c^2/2)}.
+\label{eq:simulation-profile}
+\end{equation}
+For $c=0$, set every $h_i=1$. The lognormal population coefficient of variation is $c$; the realized cross-sectional coefficient in a finite profile can differ, so both actual and target dispersions are reported.
 
-For every draw we compute the conditional mean, the heterogeneous allocation, the best scalar allocation and the mean-scalar allocation. The scalar search evaluates 2,001 equally spaced values of $w$ on $[0,1]$, refines the best grid neighborhood by golden-section search, and compares the endpoints. The value $w=1$ is the zero-position limit. We report mean compression loss, additional choice loss and compression loss divided by mean heterogeneous utility. Utility is monthly; simulated basis-point results are not annualized. Within each heterogeneous profile, draws are also divided into thirds by the exposure-alignment statistic. Appendix~\ref{app:simulation} provides the randomization, uncertainty intervals and calibration design.
+We draw one profile for each value of $c$ before generating expected returns or signal errors, and hold it fixed across $K=1{,}000$ draws. Each draw generates $\mu$, $\varepsilon$ and $s=\mu+\varepsilon$ from equation~\eqref{eq:model}, with the profile determining $\Lambda=\lambda\diag(\sigma_i^2h_i)$. The same underlying standard-normal innovations are reused across profiles. For every signal draw we compute the conditional mean, the heterogeneous allocation, the best scalar allocation and the mean-scalar allocation. The scalar search evaluates 2,001 equally spaced values of $w$ on $[0,1]$, refines the best grid neighborhood by golden-section search, and compares the endpoints. The value $w=1$ is the zero-position limit.
+
+For draw $k$, write $s_k$ for the signal, $x_k^H$ for its heterogeneous allocation, $L_k=L(s_k)$ for compression loss and $U_k^H=\bar U(x_k^H\mid s_k)$ for heterogeneous utility. The reported mean loss and proportional loss are
+\begin{equation}
+\overline L=\frac{1}{K}\sum_{k=1}^{K}L_k,
+\qquad
+\overline U^H=\frac{1}{K}\sum_{k=1}^{K}U_k^H,
+\qquad
+\text{Loss share}=\frac{\overline L}{\overline U^H}.
+\label{eq:simulation-summary}
+\end{equation}
+We express the loss share as a percentage by multiplying by 100. It is a ratio of sample means; individual-draw utility ratios are not averaged. We also report mean additional choice loss. Utility is monthly, and multiplying a utility loss by $10^4$ expresses it in basis points without annualization. Within each fixed profile, draws are divided into thirds by the exposure-alignment statistic in equation~\eqref{eq:alignment}. Appendix~\ref{app:simulation} specifies the seed, conditional Monte Carlo intervals and calibration design.
 
 \subsection{Forecasts and relative uncertainty}
 For the historical extension we estimate an intercept and slope separately for each industry by ordinary least squares. At formation date $t$, the regression contains exactly 120 pairs $(z_{i,j},r^e_{i,j+1})$ for $j=t-120,\ldots,t-1$. Writing its coefficients as $\widehat a_{i,t}$ and $\widehat b_{i,t}$, the next-month forecast is
