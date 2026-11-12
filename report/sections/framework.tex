@@ -1,34 +1,39 @@
 \section{Theoretical Framework}
 \label{sec:framework}
 \subsection{Signal uncertainty and portfolio choice}
-Consider $n$ risky assets. Let $x\in\R^n$ denote dollar positions per unit of wealth, $\mu\in\R^n$ their unknown monthly expected excess returns, and $\Sigma\in\R^{n\times n}$ a known positive-definite return covariance matrix. Define $\sigma_i^2=\Sigma_{ii}$ and $V=\diag(\sigma_1^2,\ldots,\sigma_n^2)$. The signal $s\in\R^n$ follows
+Consider $n$ risky assets. Let $x\in\R^n$ denote dollar positions per unit of wealth, $\mu\in\R^n$ their unknown monthly expected excess returns, and $\Sigma\in\R^{n\times n}$ a known positive-definite return covariance matrix. Define $\sigma_i^2=\Sigma_{ii}$ and $V=\diag(\sigma_1^2,\ldots,\sigma_n^2)$. Following \citet{pedersen2021}, the prior centers expected returns on an anchor portfolio $a\in\R^n$, and the signal $s\in\R^n$ follows
 \begin{equation}
-\mu\sim N(0,\tau\Sigma),\qquad s=\mu+\varepsilon,\qquad
+\mu\sim N(\gamma\Sigma a,\tau\Sigma),\qquad s=\mu+\varepsilon,\qquad
 \varepsilon\sim N(0,\Lambda),\qquad \mu\perp\varepsilon,
 \label{eq:model}
 \end{equation}
-where $\tau>0$ sets the prior scale and $\Lambda$ is the signal-error covariance. We use a zero anchor and the conditional mean $m(s)=\E[\mu\mid s]$. For risk aversion $\gamma>0$, the criterion is
+where $\tau>0$ sets the prior scale and $\Lambda$ is the signal-error covariance. Let $m(s)=\E[\mu\mid s]$ denote the conditional mean. For risk aversion $\gamma>0$, the criterion is
 \begin{equation}
 \bar U(x\mid s)=x'm(s)-\frac{\gamma}{2}x'\Sigma x.
 \label{eq:utility}
 \end{equation}
 We hold the risk matrix $\Sigma$ fixed to isolate how uncertainty changes the conditional-mean forecast $m(s)$ and the resulting allocation. Equation~\eqref{eq:utility} is the decision criterion throughout the oracle experiment; it is the conditional expectation of a mean--variance objective with that fixed risk matrix.
 
-Gaussian conditioning gives $m(s)=\tau\Sigma(\tau\Sigma+\Lambda)^{-1}s$. Setting the gradient of \eqref{eq:utility} to zero yields
+Gaussian conditioning gives $m(s)=\Sigma(\tau\Sigma+\Lambda)^{-1}(\tau s+\gamma\Lambda a)$. Setting the gradient of \eqref{eq:utility} to zero yields
 \begin{equation}
-x^H=\frac{1}{\gamma}\Sigma^{-1}m(s)
-=\frac{1}{\gamma}(\Sigma+\Lambda/\tau)^{-1}s.
+x=\frac{1}{\gamma}\Sigma^{-1}m(s)
+=\frac{1}{\gamma}(\tau\Sigma+\Lambda)^{-1}(\tau s+\gamma\Lambda a).
+\label{eq:anchor}
+\end{equation}
+We set $a=0$, so that $m(s)=\tau\Sigma(\tau\Sigma+\Lambda)^{-1}s$ and
+\begin{equation}
+x^H=\frac{1}{\gamma}(\Sigma+\Lambda/\tau)^{-1}s.
 \label{eq:heterogeneous}
 \end{equation}
 Positive definiteness makes this the unique maximizer. Equation~\eqref{eq:heterogeneous} uses the uncertainty-adjusted allocation underlying EPO \citep{pedersen2021}; the Gaussian specification and fixed-criterion comparisons define the experiment in this paper.
 
-We parameterize relative uncertainty by positive numbers $h_i$ with $n^{-1}\sum_i h_i=1$, and set $\Lambda=\lambda\diag(\sigma_i^2h_i)$, where $\lambda>0$ is the common scale. The scalar family is
+We parameterize relative uncertainty by positive numbers $h_i$ with $n^{-1}\sum_i h_i=1$, and set $\Lambda=\lambda\diag(\sigma_i^2h_i)$, where $\lambda>0$ is the common scale. Write $\kappa=\lambda/\tau$ for the ratio of the signal-error scale to the prior scale. With uniform $h_i=1$, $\Lambda/\tau=\kappa V$. Treating $\kappa$ as a free parameter defines the scalar family
 \begin{equation}
 x^S(\kappa)=\frac{1}{\gamma}(\Sigma+\kappa V)^{-1}s,
 \qquad \kappa\geq0.
 \label{eq:scalar}
 \end{equation}
-Uniform $h_i=1$ gives $x^H=x^S(\lambda/\tau)$. To connect the penalty to the usual shrinkage parameter, define $w=\kappa/(1+\kappa)$. Then $\Sigma+\kappa V=[(1-w)\Sigma+wV]/(1-w)$. At fixed $\gamma$, the corresponding factor $(1-w)$ in positions must be retained. This scale convention is also used in the empirical extension.
+Uniform $h_i=1$ gives $x^H=x^S(\lambda/\tau)$. To connect the penalty to the usual shrinkage parameter, define $w=\kappa/(1+\kappa)$. Then $\Sigma+\kappa V=[(1-w)\Sigma+wV]/(1-w)$. At fixed $\gamma$, the corresponding factor $(1-w)$ in positions must be retained. With $\Lambda=\lambda V$, the simple EPO of \citet{pedersen2021} uses the anchor $a=\gamma^{-1}V^{-1}s$ and holds $\gamma^{-1}\Sigma_w^{-1}s$, where $\Sigma_w=(1-w)\Sigma+wV$; the zero anchor holds $(1-w)$ times this vector. This scale convention is also used in the empirical extension.
 
 \citet{ceria2006} distinguish expected-return estimation uncertainty from return risk, a distinction also present in our framework. Their robust formulation evaluates adverse expected returns within an uncertainty set, whereas our analysis retains the Gaussian uncertainty-adjusted allocation underlying EPO.
 
