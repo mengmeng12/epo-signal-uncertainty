@@ -10,7 +10,7 @@ From the repository root, in the project's Python environment:
 python report/build.py
 ```
 
-The command generates 15 vector figures and 10 tables from result CSVs, then runs `latexmk` and BibTeX. The PDF is `report/build/main.pdf`. A TeX distribution with `pdflatex`, `bibtex`, `latexmk`, Latin Modern, `natbib`, `caption`, `microtype` and the standard mathematics packages is required. MacTeX and TeX Live provide these tools. The Python dependencies are in the repository's `requirements.txt`.
+The command generates 15 vector figures and 11 tables from result CSVs, then runs `latexmk` and BibTeX. The PDF is `report/build/main.pdf`. A TeX distribution with `pdflatex`, `bibtex`, `latexmk`, Latin Modern, `natbib`, `caption`, `microtype` and the standard mathematics packages is required. MacTeX and TeX Live provide these tools. The Python dependencies are in the repository's `requirements.txt`.
 
 For prose-only changes after the first build:
 
@@ -51,7 +51,7 @@ Keep the distinction between established methods and project work explicit. The 
 | Figure 3: calibration | `estimator_calibration.csv` |
 | Figure 4: utility accounting | `diagnostics/ce_decomposition.csv` |
 
-Appendices A–F contain derivations, simulation and calibration tables, data and replication-discrepancy accounting, forecast diagnostics, selection and holdings, and additional performance exhibits. There are 11 appendix figures and 5 appendix tables. Captions specify units, samples and uncertainty conventions. Figures are re-exported from the project's plotting functions as vectors; the report export adjusts labels and layout, without changing plotted numerical values.
+Appendices A–F contain derivations, simulation and calibration tables, data and replication-discrepancy accounting, forecast diagnostics, selection and holdings, and additional performance exhibits. There are 11 appendix figures and 6 appendix tables. Captions specify units, samples and uncertainty conventions. Figures are re-exported from the project's plotting functions as vectors; the report export adjusts labels and layout, without changing plotted numerical values.
 
 ## References and checks
 
@@ -90,3 +90,7 @@ python report/scripts/label_placebo.py
 The script checks original-path reproduction, exact uniform-profile equivalence, allocation agreement and preservation of each uncertainty distribution. Failed paths are recorded rather than restarted or silently removed. The manifest stores input/code/output hashes and the sampled rankings; the normal report build reruns the diagnostic when those inputs change.
 
 The original matching beats 99 and 88 of 100 shuffled portfolios in 1970–2018 under fixed risk aversion and targeted exposure, respectively; the counts fall to 21 and 29 in 2019–2025. All paths remain solvent. These are descriptive ranks, not permutation p-values: industries are not assumed exchangeable. They neither prove equivalence to scalar nor isolate forecast quality from uncertainty-estimation error. The matched scalar comparison remains the main estimand.
+
+## Collaborator integration (November 12, 2026)
+
+The report incorporates `yc/fig1-appendix-c` while retaining the revised introduction, standalone abstract, contents, expanded methodology and label diagnostic. Figure 1 now compares raw mean–variance, corrected mean–variance and selected EPO: its first three panels use each rule's own risk matrix; variance shares use the common Q matrix. Appendix C adds fixed-portfolio convention accounting from `output/benchmark/convention_steps_fixed.csv`. Benchmark performance and the scalar/heterogeneous extension results are unchanged.

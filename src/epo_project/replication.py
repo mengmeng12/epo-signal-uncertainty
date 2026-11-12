@@ -25,7 +25,7 @@ import pandas as pd
 
 from . import config as cfg
 from .data import load_inputs, load_returns
-from .epo import epo_weights, scale_to_target_vol, solve
+from .epo import epo_weights, scale_to_target_vol, shrunk_covariance, solve
 from .rolling import annual_selection, annualized_sharpe, apply_selection
 
 # Pedersen, Babu and Levine (2021), Table 5, Equity 1, realized gross Sharpe ratios 1942-2018
@@ -34,19 +34,25 @@ PUBLISHED_EQUITY1 = {"raw_mvo": 0.19, 0.0: 0.56, 0.25: 0.75, 0.50: 0.79, 0.75: 0
                      0.90: 0.79, 0.99: 0.73, "oos": 0.79}
 
 
-def _pc_stats(q: np.ndarray, s: np.ndarray, r: np.ndarray, weights: dict) -> tuple[list, dict]:
-    """Principal components of the correlation matrix of Q at t, evaluated at t+1.
+def _components(cov: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Volatilities, ascending eigenvalues, eigenvectors and eigenvalue groups of cov's correlation matrix."""
+    sd = np.sqrt(np.diag(cov))
+    d, p = np.linalg.eigh(cov / np.outer(sd, sd))
+    n = len(d)
+    group = np.floor(cfg.PC_GROUPS * np.arange(n) / n).astype(int) + 1
+    return sd, d, p, group
+
+
+def _component_stats(cov: np.ndarray, s: np.ndarray, r: np.ndarray) -> list:
+    """Principal components of one risk matrix at t, evaluated at t+1.
 
     Assets are standardized by their volatility sd_t, so component k is a
     portfolio with predicted monthly variance d_k (its eigenvalue). The signal
     is projected the same way, which gives each component's ex ante signal
-    direction and Sharpe ratio up to a common scale.
+    direction and Sharpe ratio up to a common scale. Sigma_hat, Q and every
+    Sigma_w share the volatilities and eigenvectors; only the eigenvalues differ.
     """
-    sd = np.sqrt(np.diag(q))
-    d, p = np.linalg.eigh(q / np.outer(sd, sd))                 # ascending eigenvalues
-    n = len(d)
-    group = np.floor(cfg.PC_GROUPS * np.arange(n) / n).astype(int) + 1
-
+    sd, d, p, group = _components(cov)
     pc_ret = p.T @ (r / sd)                                    # realized component returns
     pc_sig = p.T @ (s / sd)                                    # signal in component space
     ex_ante = np.abs(pc_sig) / np.sqrt(d)
@@ -59,12 +65,25 @@ def _pc_stats(q: np.ndarray, s: np.ndarray, r: np.ndarray, weights: dict) -> tup
                      "realized_to_predicted_var": np.mean(pc_ret[k] ** 2 / d[k]),
                      "ex_ante_sharpe_rel": ex_ante[k].mean() / ex_ante.mean(),
                      "oriented_return": oriented[k].mean()})
+    return rows
 
+
+def _pc_stats(q: np.ndarray, sigma_hat: np.ndarray, s: np.ndarray, r: np.ndarray,
+              weights: dict) -> tuple[dict, dict]:
+    """Component statistics under each portfolio's own risk matrix, and risk shares under Q.
+
+    Raw MVO uses Sigma_hat and EPO(w) uses (1 - w) Q + w V (w = 0 is Q). Risk
+    shares measure every portfolio with Q, the matrix used to scale all of them.
+    """
+    matrices = {"raw_mvo": sigma_hat, **{w: shrunk_covariance(q, w) for w in cfg.W_GRID}}
+    stats = {label: _component_stats(cov, s, r) for label, cov in matrices.items()}
+
+    sd, d, p, group = _components(q)
     shares = {}
     for label, x in weights.items():                           # share of predicted variance by group
         contrib = d * (p.T @ (sd * x)) ** 2
         shares[label] = np.array([contrib[group == g].sum() for g in range(1, cfg.PC_GROUPS + 1)]) / contrib.sum()
-    return rows, shares
+    return stats, shares
 
 
 def candidate_panel() -> tuple[pd.DataFrame, pd.DataFrame, dict, dict]:
@@ -94,8 +113,8 @@ def candidate_panel() -> tuple[pd.DataFrame, pd.DataFrame, dict, dict]:
         r = r_next.to_numpy()
         scaled.append({"date": t1, **{k: scale_to_target_vol(x, q) @ r for k, x in weights.items()}})
 
-        rows, shares = _pc_stats(q, s, r, weights)
-        pc_rows += [{"date": t1, **row} for row in rows]
+        stats, shares = _pc_stats(q, sigma_hat, s, r, weights)
+        pc_rows += [{"date": t1, "model": label, **row} for label, rows in stats.items() for row in rows]
         share_rows.append({"date": t1, **shares})
 
     shares = {row["date"]: {k: v for k, v in row.items() if k != "date"} for row in share_rows}
@@ -134,16 +153,26 @@ def run(make_plot: bool = True) -> dict:
     table.to_csv(cfg.OUTPUT_DIR / "replication_table.csv", index=False, float_format="%.4f")
 
     # ---------------------------------------------------------------- problem-portfolio diagnostics
+    # Component statistics use each portfolio's own risk matrix: Sigma_hat for raw
+    # MVO, Q for corrected MVO, and Sigma_w at the selected w for OOS EPO.
     pc = pc[pc["date"].isin(common)]
-    by_group = pc.groupby("group")
-    oriented = pc.pivot(index="date", columns="group", values="oriented_return")
-    diag = pd.DataFrame({
-        "mean_eigenvalue": by_group["eigenvalue"].mean(),
-        "realized_to_predicted_vol": np.sqrt(by_group["realized_to_predicted_var"].mean()),
-        "ex_ante_sharpe_relative": by_group["ex_ante_sharpe_rel"].mean(),
-        "realized_sharpe_signal_direction": oriented.apply(annualized_sharpe),
-    })
+    selected = oos["selected"]
+    frames = {"": pc[pc["model"].apply(lambda m: m == 0.0)],
+              "_raw_mvo": pc[pc["model"].apply(lambda m: m == "raw_mvo")],
+              "_oos_epo": pc[[m == selected.at[t] for t, m in zip(pc["date"], pc["model"])]]}
+    columns = {}
+    for suffix, frame in frames.items():
+        by_group = frame.groupby("group")
+        oriented = frame.pivot(index="date", columns="group", values="oriented_return")
+        columns.update({
+            "mean_eigenvalue" + suffix: by_group["eigenvalue"].mean(),
+            "realized_to_predicted_vol" + suffix: np.sqrt(by_group["realized_to_predicted_var"].mean()),
+            "ex_ante_sharpe_relative" + suffix: by_group["ex_ante_sharpe_rel"].mean(),
+            "realized_sharpe_signal_direction" + suffix: oriented.apply(annualized_sharpe),
+        })
+    diag = pd.DataFrame(columns)
     months = list(common)
+    diag["risk_share_raw_mvo"] = np.mean([shares[m]["raw_mvo"] for m in months], axis=0)
     diag["risk_share_mvo_q"] = np.mean([shares[m][0.0] for m in months], axis=0)
     diag["risk_share_oos_epo"] = np.mean([shares[m][oos.at[m, "selected"]] for m in months], axis=0)
     diag.index.name = "eigenvalue_group"
@@ -160,28 +189,28 @@ def plot_diagnostics(diag: pd.DataFrame) -> None:
     import matplotlib.pyplot as plt
 
     ink, muted, grid = "#0b0b0b", "#52514e", "#e4e3df"
-    blue, orange = "#2a78d6", "#eb6834"
+    models = [("Raw MVO", "_raw_mvo", "raw_mvo", "#8a8f98"),      # same colors as the slides
+              ("Corrected MVO", "", "mvo_q", "#2a78d6"),
+              ("OOS EPO", "_oos_epo", "oos_epo", "#eb6834")]
     groups = diag.index.to_numpy()
     ticks = [f"G{g}" + (" (smallest)" if g == groups.min() else " (largest)" if g == groups.max() else "")
              for g in groups]
 
     fig, axes = plt.subplots(2, 2, figsize=(10, 7))
     panels = [
-        (axes[0, 0], "realized_to_predicted_vol", "Realized / predicted volatility", 1.0),
-        (axes[0, 1], "ex_ante_sharpe_relative", "Ex ante signal Sharpe ratio (relative to average)", 1.0),
-        (axes[1, 0], "realized_sharpe_signal_direction", "Realized Sharpe ratio in the signal direction", 0.0),
+        (axes[0, 0], lambda sfx, key: "realized_to_predicted_vol" + sfx, "Realized / predicted volatility", 1.0),
+        (axes[0, 1], lambda sfx, key: "ex_ante_sharpe_relative" + sfx, "Ex ante signal Sharpe ratio (relative to average)", 1.0),
+        (axes[1, 0], lambda sfx, key: "realized_sharpe_signal_direction" + sfx, "Realized Sharpe ratio in the signal direction", 0.0),
+        (axes[1, 1], lambda sfx, key: "risk_share_" + key, "Share of predicted portfolio variance under Q", None),
     ]
-    for ax, col, title, ref in panels:
-        ax.bar(groups, diag[col], width=0.6, color=blue)
-        ax.axhline(ref, color=muted, linewidth=1)
+    width = 0.27
+    for ax, column, title, ref in panels:
+        for i, (label, suffix, key, color) in enumerate(models):
+            ax.bar(groups + (i - 1) * (width + 0.01), diag[column(suffix, key)], width=width, color=color, label=label)
+        if ref is not None:
+            ax.axhline(ref, color=muted, linewidth=1)
         ax.set_title(title, fontsize=10, color=ink, loc="left")
-
-    ax = axes[1, 1]
-    width = 0.38
-    ax.bar(groups - width / 2 - 0.01, diag["risk_share_mvo_q"], width=width, color=blue, label="MVO with Q")
-    ax.bar(groups + width / 2 + 0.01, diag["risk_share_oos_epo"], width=width, color=orange, label="OOS EPO")
-    ax.set_title("Share of predicted portfolio variance", fontsize=10, color=ink, loc="left")
-    ax.legend(frameon=False, fontsize=9)
+    axes[0, 0].legend(frameon=False, fontsize=9)
 
     for ax in axes.flat:
         ax.set_xticks(groups, ticks, fontsize=8, color=muted)

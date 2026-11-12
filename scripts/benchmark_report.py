@@ -8,6 +8,7 @@ Reads the Step 1-2 inputs and writes only to output/benchmark:
     sample_overview.png         eligible industries and industry distributions
     convention_grid.csv         Sharpe under each combination of conventions
     convention_steps.csv        one path from the published procedure to ours
+    convention_steps_fixed.csv  the same path for raw MVO and EPO w=0.99
     selected_w.csv              w chosen each January
     selected_w.png              the same as a step chart
 
@@ -21,7 +22,7 @@ import pandas as pd
 
 from epo_project import config as cfg
 from epo_project.data import load_inputs, load_returns
-from epo_project.epo import epo_weights, scale_to_target_vol
+from epo_project.epo import epo_weights, scale_to_target_vol, solve
 from epo_project.rolling import annual_selection, annualized_sharpe, apply_selection
 
 OUT = cfg.OUTPUT_DIR / "benchmark"
@@ -29,6 +30,7 @@ START, END = cfg.BENCHMARK_PERIOD
 PROPOSAL_GRID = tuple(cfg.W_GRID)
 PUBLISHED_GRID = (0.0, 0.10, 0.25, 0.50, 0.75, 0.90, 0.99, 1.00)   # Pedersen, Babu and Levine (2021)
 PUBLISHED_OOS = 0.79
+PUBLISHED_FIXED = {"raw": 0.19, 0.99: 0.73}                         # Table 5, Equity 1
 
 INK, MUTED, GRID, BLUE, ORANGE = "#0b0b0b", "#52514e", "#e4e3df", "#2a78d6", "#eb6834"
 
@@ -44,7 +46,7 @@ def candidate_tables():
     dates = excess.index
     grid = sorted(set(PROPOSAL_GRID + PUBLISHED_GRID))
     scaled, unscaled, zero_filled, members_by_t = [], [], [], {}
-    for t, (members, _, q) in models.items():
+    for t, (members, sigma_hat, q) in models.items():
         members_by_t[t] = list(members)
         pos = dates.get_loc(t)
         if pos + 1 >= len(dates):
@@ -54,7 +56,7 @@ def candidate_tables():
         r_next = excess.loc[t1, members]
         missing = r_next.isna().any()
         r = r_next.fillna(0.0).to_numpy()
-        x = {w: epo_weights(q, s, w) for w in grid}
+        x = {"raw": solve(sigma_hat, s), **{w: epo_weights(q, s, w) for w in grid}}
         scaled.append({"date": t1, **{w: np.nan if missing else scale_to_target_vol(v, q) @ r for w, v in x.items()}})
         unscaled.append({"date": t1, **{w: np.nan if missing else v @ r for w, v in x.items()}})
         zero_filled.append({"date": t1, **{w: v @ r for w, v in x.items()}})
@@ -144,6 +146,27 @@ def convention_tables(scaled, unscaled, zero_filled, common):
     steps = pd.DataFrame(path, columns=["step", "months", "oos_epo_sharpe"])
     steps["change"] = steps.oos_epo_sharpe.diff()
     return grid, steps
+
+
+def fixed_convention_steps(scaled, unscaled, zero_filled, common):
+    """The published-to-project path for the two fixed portfolios with the largest gaps.
+
+    No selection is involved, so the path has three changes: data vintage (published
+    versus our 924 months, unscaled, missing held return set to zero), the common
+    863-month sample, and monthly scaling to 10% predicted volatility under Q.
+    """
+    keys = {"raw": "raw_mvo_sharpe", 0.99: "epo_099_sharpe"}
+    path = [("Published result (Table 5, Equity 1)", np.nan, None),
+            ("Published procedure, all months, missing return set to zero", 924, zero_filled.loc[START:END]),
+            ("Drop 1943-07 and 1944-1948", len(common), unscaled.reindex(common)),
+            ("Scale to 10% predicted volatility", len(common), scaled.reindex(common))]
+    rows = []
+    for step, months, table in path:
+        row = {"step": step, "months": months}
+        for key, column in keys.items():
+            row[column] = PUBLISHED_FIXED[key] if table is None else annualized_sharpe(table[key])
+        rows.append(row)
+    return pd.DataFrame(rows)
 
 
 def style(ax):
@@ -248,10 +271,15 @@ def main():
 
     construction, counts, descriptives, summary, skipped, missing_held = sample_tables(scaled, members_by_t, excess, common)
     grid, steps = convention_tables(scaled, unscaled, zero_filled, common)
+    fixed = fixed_convention_steps(scaled, unscaled, zero_filled, common)
 
-    published_row = pd.read_csv(cfg.OUTPUT_DIR / "replication_table.csv").set_index("portfolio").loc["OOS EPO"]
+    replication = pd.read_csv(cfg.OUTPUT_DIR / "replication_table.csv").set_index("portfolio")
+    published_row = replication.loc["OOS EPO"]
     if int(published_row["months"]) != len(common) or abs(published_row["sharpe"] - steps.oos_epo_sharpe.iloc[-1]) > 1e-4:
         raise ValueError("The final step does not match replication_table.csv.")
+    for portfolio, column in (("Raw MVO (Sigma_hat)", "raw_mvo_sharpe"), ("EPO w=0.99", "epo_099_sharpe")):
+        if abs(replication.at[portfolio, "sharpe"] - fixed[column].iloc[-1]) > 1e-4:
+            raise ValueError(f"The final fixed-portfolio step does not match replication_table.csv for {portfolio}.")
 
     selected = selection.loc[int(START[:4]):int(END[:4]), "selected"]
 
@@ -261,6 +289,7 @@ def main():
     summary.to_csv(OUT / "industry_summary.csv", float_format="%.4f")
     grid.to_csv(OUT / "convention_grid.csv", index=False, float_format="%.4f")
     steps.to_csv(OUT / "convention_steps.csv", index=False, float_format="%.4f")
+    fixed.to_csv(OUT / "convention_steps_fixed.csv", index=False, float_format="%.4f")
     selection.loc[selected.index, ["selected", "score", "window_start", "window_end"]].to_csv(
         OUT / "selected_w.csv", date_format="%Y-%m-%d", float_format="%.4f")
 
@@ -269,7 +298,8 @@ def main():
 
     pd.set_option("display.width", 200, "display.max_colwidth", 80)
     for title, frame in (("sample construction", construction), ("industry summary", summary.round(2)),
-                         ("convention grid", grid.round(4)), ("convention steps", steps.round(4))):
+                         ("convention grid", grid.round(4)), ("convention steps", steps.round(4)),
+                         ("fixed-portfolio convention steps", fixed.round(4))):
         print(f"\n{title}\n{frame.to_string()}")
     print("\nselected w:", selected.value_counts().sort_index().to_dict(), "changes", int((selected.diff().fillna(0) != 0).sum()))
 
