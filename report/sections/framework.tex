@@ -30,6 +30,14 @@ x^S(\kappa)=\frac{1}{\gamma}(\Sigma+\kappa V)^{-1}s,
 \end{equation}
 Uniform $h_i=1$ gives $x^H=x^S(\lambda/\tau)$. To connect the penalty to the usual shrinkage parameter, define $w=\kappa/(1+\kappa)$. Then $\Sigma+\kappa V=[(1-w)\Sigma+wV]/(1-w)$. At fixed $\gamma$, the corresponding factor $(1-w)$ in positions must be retained. This scale convention is also used in the empirical extension.
 
+The connection to robust optimization requires distinguishing the uncertainty matrix from the decision criterion. Let $\Omega_{\mathrm{CS}}\succ0$ denote Ceria and Stubbs's expected-return estimation-error covariance, written as $\Sigma$ in their paper and renamed here to avoid confusion with return risk. In our notation, their standard ellipsoid is $\mathcal E(s)=\{\nu\in\R^n:(\nu-s)'\Omega_{\mathrm{CS}}^{-1}(\nu-s)\leq\delta^2\}$, where $\nu$ is a candidate expected-return vector and $\delta>0$ is the uncertainty radius. Their robust utility criterion is
+\begin{equation}
+\min_{\nu\in\mathcal E(s)}x'\nu-\frac{\gamma}{2}x'\Sigma x
+=x's-\delta\sqrt{x'\Omega_{\mathrm{CS}}x}-\frac{\gamma}{2}x'\Sigma x,
+\label{eq:robust-comparison}
+\end{equation}
+which is maximized over feasible positions \citep{ceria2006}. Both $\Omega_{\mathrm{CS}}$ and $\Lambda$ describe uncertainty about expected returns separately from return covariance. Equation~\eqref{eq:robust-comparison} uses a worst-case mean within an ellipsoid; equation~\eqref{eq:heterogeneous} uses Gaussian conditioning on a noisy signal. Even setting $\Omega_{\mathrm{CS}}=\Lambda$ does not identify the resulting portfolio rules. The historical implementation estimates a diagonal relative-error profile and retains the EPO allocation, so its contribution concerns scalar compression and feasible estimation within that rule.
+
 \subsection{Compression loss and exposure alignment}
 The oracle scalar parameter, denoted $\kappa^*(s)$, maximizes $\bar U(x^S(\kappa)\mid s)$ over $\kappa\geq0$, including the limiting zero position. The oracle knows $\Sigma$, $\Lambda$, $\tau$ and the observed $s$. Neither allocation observes the sampled $\mu$. Define $x^{S,*}=x^S(\kappa^*)$ and $\Delta x=x^H-x^{S,*}$. Completing the quadratic in \eqref{eq:utility} gives
 \begin{equation}

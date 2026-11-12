@@ -57,7 +57,7 @@ Appendices A–F contain derivations, simulation and calibration tables, data an
 
 ## References and checks
 
-The four article references were checked against Crossref DOI metadata and the primary publication/author sources. The source article supplied in `doc/` supports the EPO attribution and published benchmark values. The French data documentation supports the dataset description. The paper cites:
+The ten article references were checked against Crossref DOI metadata and primary publication/author sources. The resampled-efficiency book was checked against Oxford University Press records. The paper cites 12 references in total, including the French data source. [The literature audit](reference_audit.md) records the six added articles’ volume, issue and pages, method attribution and the distinction between issue years and online publication dates. The source article supplied in `doc/` supports the EPO attribution and published benchmark values. The French data documentation supports the dataset description. The original references are:
 
 - Markowitz (1952), DOI `10.1111/j.1540-6261.1952.tb01525.x`: the mean–variance objective.
 - Ledoit and Wolf (2004), DOI `10.1016/S0047-259X(03)00096-4`: covariance conditioning and shrinkage context.
@@ -106,3 +106,7 @@ The six main tables and five main figures include composition/risk-direction tra
 Figure 1 includes a negative Sharpe tick and zero reference. Table 4 groups columns by period before its body rule. Displayed year ranges are normalized without changing input keys. Real `placeins` barriers constrain floats while preserving the separate cover, abstract and contents pages.
 
 The expanding-selection attribution is checked against journal p. 138 (PDF page 17) of Pedersen, Babu and Levine (2021), under “Global Asset Classes: Beating Time-Series Momentum” / “Performance of EPO vs. benchmark portfolios,” including the Figure 2 note. The equity Table 5 note on journal p. 142 (PDF page 21) says only that selection uses past data. Appendix C explicitly identifies applying the monthly expanding rule to Equity 1 as a diagnostic interpretation, rather than an equity-specific implementation detail stated in that table.
+
+## Literature positioning (November 12, 2026)
+
+The introduction contains a dedicated continuous paragraph on robust uncertainty sets, constraints and regularization, and resampling, followed by three explicit analytical and empirical contributions. Section 2.1 compares the standard Ceria–Stubbs ellipsoid and worst-case objective with the paper's Gaussian allocation, renaming their estimation-error covariance as Omega_CS to avoid a conflict with return covariance. Section 3.4 distinguishes forecast-variance resampling from averaging optimized portfolios. Michaud (1989) supports the estimation-risk motivation; Michaud and Michaud (2008), Chapter 6, supplies the resampled-efficiency method reference. See `reference_audit.md` for verification details.
