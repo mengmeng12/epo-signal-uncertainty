@@ -27,7 +27,7 @@ x^H=\frac{1}{\gamma}(\Sigma+\Lambda/\tau)^{-1}s.
 \end{equation}
 Positive definiteness makes this the unique maximizer. Equation~\eqref{eq:heterogeneous} uses the uncertainty-adjusted allocation underlying EPO \citep{pedersen2021}; the Gaussian specification and fixed-criterion comparisons define the experiment in this paper.
 
-We parameterize relative uncertainty by positive numbers $h_i$ with $n^{-1}\sum_i h_i=1$, and set $\Lambda=\lambda\diag(\sigma_i^2h_i)$, where $\lambda>0$ is the common scale. Write $\kappa=\lambda/\tau$ for the ratio of the signal-error scale to the prior scale. With uniform $h_i=1$, $\Lambda/\tau=\kappa V$. Treating $\kappa$ as a free parameter defines the scalar family
+We parameterize relative uncertainty by positive numbers $h_i$ with $n^{-1}\sum_i h_i=1$, and set $\Lambda=\lambda\diag(\sigma_i^2h_i)$, where $\lambda>0$ is the common scale. Write $\bar\kappa=\lambda/\tau$ for the common scale implied by the model. With uniform $h_i=1$, $\Lambda/\tau=\bar\kappa V$. We use $\kappa$ as a free penalty parameter in the scalar family
 \begin{equation}
 x^S(\kappa)=\frac{1}{\gamma}(\Sigma+\kappa V)^{-1}s,
 \qquad \kappa\geq0.

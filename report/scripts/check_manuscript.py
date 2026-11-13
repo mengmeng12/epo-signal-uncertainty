@@ -50,6 +50,7 @@ def main():
         "Reference .* undefined",
         "Overfull",
         "LaTeX Error",
+        "destination with the same identifier",
     ]:
         assert not re.search(pattern, log), f"Compilation issue: {pattern}"
     result = {

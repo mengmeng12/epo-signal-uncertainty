@@ -140,7 +140,14 @@ def make_tables(d):
         ["Forecast training", "Momentum score", regression_window, regression_window],
         ["Selection objective", "Gross Sharpe", "Net utility", "Net utility"],
         ["Selection window", selection_window, selection_window, selection_window],
-        ["Risk scaling", rf"{cfg.TARGET_VOL*100:g}\% target", gamma, gamma],
+        [
+            "Main position sizing",
+            rf"{cfg.TARGET_VOL*100:g}\% target",
+            r"\shortstack{10\% target\\gross cap 3}",
+            r"\shortstack{10\% target\\gross cap 3}",
+        ],
+        ["Direct-allocation comparison", "---", gamma, gamma],
+        ["Utility risk aversion", "---", gamma, gamma],
         ["Trading cost / short fee", "Gross returns", costs, costs],
     ]
     table(
@@ -149,7 +156,7 @@ def make_tables(d):
         "tab:design",
         ["Setting", "Replication", "1970--2018", "2019--2025"],
         rows,
-        "Trading cost is per dollar traded; short fee is annual. The benchmark is evaluated in 1942--2018 on the common valid-month sample. Both extension portfolios use identical eligible industries and selected penalty levels.",
+        "Trading cost is per dollar traded; short fee is annual. The benchmark is evaluated in 1942--2018 on the common valid-month sample. Both extension portfolios use identical eligible industries and selected penalty levels. Targets refer to annual predicted volatility under the common risk matrix. The main extension comparison applies the target and gross cap; direct fixed-risk-aversion allocations provide a comparison of scale effects. Utility is evaluated at risk aversion three under both extension rules.",
         "lccc",
     )
     r = read("replication_table")
@@ -184,12 +191,15 @@ def make_tables(d):
         r"Published values: \citet{pedersen2021}, Table 5, Equity 1. Replication values use 863 common months in 1942--2018 and gross excess returns. The published grid has no $w=0.95$ entry. Appendix~\ref{app:data} analyzes the numerical differences.",
     )
     f = d["forecast_summary"].set_index("period")
+    f_pct = f.copy()
+    for col in ("pooled_oos_r2", "oos_r2_ci_lower", "oos_r2_ci_upper"):
+        f_pct[col] *= 100
     h = d["reliability_summary"].set_index("period")
     periods = list(f.index)
     specs = [
         ("Forecast error, root mean square (bp/month)", f, "rmse_forecast_bp_month", 1),
         ("Historical-mean error (bp/month)", f, "rmse_historical_mean_bp_month", 1),
-        ("Pooled predictive $R^2$", f, "pooled_oos_r2", 4),
+        (r"Pooled predictive $R^2$ (\%)", f_pct, "pooled_oos_r2", 2),
         ("Mean rank correlation", f, "mean_rank_ic", 4),
         ("Mean uncertainty dispersion", h, "mean_h_cv", 3),
         ("One-month uncertainty rank persistence", h, "mean_h_rank_corr_1m", 3),
@@ -207,13 +217,21 @@ def make_tables(d):
             for p in periods
         ],
     )
+    rows.insert(
+        3,
+        [r"95\% interval for predictive $R^2$ (\%)"]
+        + [
+            f'[{f_pct.loc[p,"oos_r2_ci_lower"]:.2f}, {f_pct.loc[p,"oos_r2_ci_upper"]:.2f}]'
+            for p in periods
+        ],
+    )
     table(
         "forecast",
         "Forecast accuracy and the estimated uncertainty profile.",
         "tab:forecast",
         ["Statistic", *periods],
         rows,
-        r"Forecast accuracy uses 28,104 and 4,116 eligible industry-months, respectively. $R^2$ compares pooled squared errors with the rolling historical-mean forecast. Rank correlation compares forecasts with next-month excess returns. Uncertainty dispersion is the monthly population coefficient of variation of $\widehat h$, averaged over time. Intervals use 1,000 moving-block bootstrap samples with 12 consecutive months per block.",
+        r"Forecast accuracy uses 28,104 and 4,116 eligible industry-months, respectively. $R^2$ compares pooled squared errors with the rolling historical-mean forecast. $R^2$ and its interval endpoints are expressed as percentages. Rank correlation compares forecasts with next-month excess returns. Uncertainty dispersion is the monthly population coefficient of variation of $\widehat h$, averaged over time. Intervals use 1,000 moving-block bootstrap samples with 12 consecutive months per block.",
     )
     p = read("performance_table")
     dep = read("deployment_sensitivity")
@@ -385,7 +403,7 @@ def make_tables(d):
         "tab:calibration-error",
         [
             "Feedback",
-            "$a_{\\mathrm{cal}}$",
+            r"$\delta_{\mathrm{cal}}$",
             "Median SD",
             "5th--95th percentile",
             "True/reference CV",
@@ -400,7 +418,7 @@ def make_tables(d):
             ]
             for r in calibration.itertuples()
         ],
-        r"Each design contains 1,000 histories of 49 assets. SD is the within-history sample standard deviation of $\log(\widehat h/h^\star)$. $a_{\mathrm{cal}}$ is the square root of its mean squared value. Quantiles summarize history-specific SDs, not confidence limits for $a_{\mathrm{cal}}$. The zero-feedback reference uses the exact conditional OLS variance; feedback 0.4 uses an analytical reference. CV is the mean within-history coefficient of variation of normalized reference uncertainty. Figure~\ref{fig:estimation-tradeoff} uses the zero-feedback value.",
+        r"Each design contains 1,000 histories of 49 assets. SD is the within-history sample standard deviation of $\log(\widehat h/h^\star)$. $\delta_{\mathrm{cal}}$ is the square root of its mean squared value. Quantiles summarize history-specific SDs, not confidence limits for $\delta_{\mathrm{cal}}$. The zero-feedback reference uses the exact conditional OLS variance; feedback 0.4 uses an analytical reference. CV is the mean within-history coefficient of variation of normalized reference uncertainty. Figure~\ref{fig:estimation-tradeoff} uses the zero-feedback value.",
         "lrrrr",
     )
     c = annual_simulation_report()
@@ -569,8 +587,8 @@ def make_figures(d):
         if name == "estimator_calibration":
             fig.set_size_inches(9.5, 7.7)
             for ax in fig.axes[:2]:
-                ax.set_ylabel("Conditional-mean error (bp)", fontsize=12)
-                ax.set_xlabel("Bootstrap standard error (bp)", fontsize=12)
+                ax.set_ylabel("Conditional-mean error (monthly bp)", fontsize=12)
+                ax.set_xlabel("Bootstrap standard error (monthly bp)", fontsize=12)
             for ax, box in zip(
                 fig.axes,
                 [
@@ -722,15 +740,15 @@ def make_compression_figure():
         xlabel="Exposure-alignment group", title="Compression by exposure alignment"
     )
     for ax in axes:
-        ax.set_ylabel("Share of mean oracle utility (%)", fontsize=12)
+        ax.set_ylabel("Share of mean oracle utility (%)", fontsize=14)
         ax.set_ylim(bottom=0)
         ax.set_axisbelow(True)
         ax.grid(axis="y", color="#e4e3df", linewidth=0.6)
         ax.spines[["top", "right"]].set_visible(False)
-        ax.tick_params(labelsize=12)
-        ax.xaxis.label.set_fontsize(12)
+        ax.tick_params(labelsize=14)
+        ax.xaxis.label.set_fontsize(14)
         ax.title.set_fontsize(14)
-        ax.legend(loc="upper left", frameon=False, fontsize=10)
+        ax.legend(loc="upper left", frameon=False, fontsize=14)
     fig.savefig(DEST / "compression_loss.pdf", bbox_inches="tight")
     plt.close(fig)
 
@@ -761,39 +779,32 @@ def make_value_assets():
         "tab:label-placebo",
         [
             "Position sizing",
-            "Original",
-            "Random mean",
+            r"\shortstack{Original\\$\Delta\mathrm{CE}$}",
+            r"\shortstack{Mean random\\$\Delta\mathrm{CE}$}",
             "$D$",
             r"95\% interval for $D$",
-            r"Rank (\%)",
+            r"\shortstack{Below original\\(\%)}",
         ],
         rows,
-        r"Original and Random mean are annual net certainty equivalent differences from scalar, in bp. Random mean averages the certainty equivalents of 100 fixed random assignments. $D$ is Original minus Random mean. Intervals use 1,000 paired moving-block bootstrap samples of all strategy returns together, with 12-month blocks and the assignments held fixed. Rank is the percentage of random assignments with lower net certainty equivalent than the original. Appendix~\ref{app:label-placebo} gives the assignment algorithm and distribution summaries.",
+        r"Original and Random mean are annual net certainty equivalent differences from scalar, in bp. Random mean averages the certainty equivalents of 100 fixed random assignments. $D$ is Original minus Random mean. Intervals use 1,000 paired moving-block bootstrap samples of all strategy returns together, with 12-month blocks and the assignments held fixed. Below original is the percentage of random assignments with lower net certainty equivalent than the original; it is a descriptive rank. Appendix~\ref{app:label-placebo} gives the assignment algorithm and distribution summaries.",
         "lrrrrr",
     )
-    rows = []
-    for r in intervals.itertuples():
-        rows.append(
-            [
-                r.period,
-                (
-                    r"Fixed $\gamma$"
-                    if r.policy == "fixed_gamma"
-                    else r"10\% target; cap 3"
-                ),
-                f"{r.random_mean_delta_bp_year:.2f}",
-                f"{r.random_median_delta_bp_year:.2f}",
-                f"{r.below_original_pct:.0f}",
-            ]
-        )
+    rows = [
+        [
+            r.period,
+            r"Fixed $\gamma$" if r.policy == "fixed_gamma" else r"10\% target; cap 3",
+            f"{r.random_median_delta_bp_year:.2f}",
+        ]
+        for r in intervals.itertuples()
+    ]
     table(
         "assignment_distribution",
-        "Random-assignment net utility summaries.",
+        "Median net utility differences across random assignments.",
         "tab:assignment-distribution",
-        ["Period", "Position sizing", "Mean", "Median", r"Below original (\%)"],
+        ["Period", "Position sizing", r"Median $\Delta\mathrm{CE}$"],
         rows,
-        r"Mean and median are annual net certainty equivalent differences from scalar in bp, across the same 100 assignments. The percentage below the original is a descriptive rank. All strategies remain solvent.",
-        "llrrr",
+        r"Medians are annual net certainty equivalent differences from scalar in bp, across the same 100 assignments. Table~\ref{tab:label-placebo} reports their means and the percentage below the original strategy. All strategies remain solvent.",
+        "llr",
     )
 
     summary = read("error_simulation_summary", VALUE_DIR)
@@ -820,7 +831,7 @@ def make_value_assets():
         "tab:estimation-tradeoff",
         [
             r"CV (\%)",
-            "$a$",
+            r"$\delta$",
             r"$L_{\bar\kappa}$",
             "$P$",
             r"$L_{\bar\kappa}-P$",
@@ -828,7 +839,7 @@ def make_value_assets():
             r"$P<L_{\bar\kappa}$ (\%)",
         ],
         rows,
-        r"CV is the realized coefficient of variation of true relative uncertainty. $a$ is the log standard deviation of the multiplicative estimation error. Utilities and interval endpoints are annual bp; entries are means across 1,000 paired draws. Intervals equal the mean plus or minus 1.96 Monte Carlo standard errors. The last column reports the fraction of draws with a positive gain, using a monthly numerical tolerance of $10^{-12}$. The common scalar is $\bar\kappa=\lambda/\tau=2.5$. Each error level uses the same true uncertainty, signals and standard-normal estimation errors. The additional level $a=0.414$ matches calibration log-error dispersion; calculations use its unrounded value.",
+        r"CV is the realized coefficient of variation of true relative uncertainty. $\delta$ is the log standard deviation of the multiplicative estimation error. Utilities and interval endpoints are annual bp; entries are means across 1,000 paired draws. Intervals equal the mean plus or minus 1.96 Monte Carlo standard errors. The last column reports the fraction of draws with a positive gain, using a monthly numerical tolerance of $10^{-12}$. The common scalar is $\bar\kappa=\lambda/\tau=2.5$. Each error level uses the same true uncertainty, signals and standard-normal estimation errors. The additional level $\delta=0.414$ matches calibration log-error dispersion; calculations use its unrounded value.",
         "rrrrrrr",
     )
 
@@ -859,17 +870,37 @@ def make_value_assets():
                 capsize=3,
                 linewidth=1.8,
             )
+        calibrated_gain = float(
+            part.loc[
+                np.isclose(part.error_sd, calibrated_a), "net_gain_share_pct"
+            ].iloc[0]
+        )
+        label_height = (
+            0.28 if calibrated_gain < 0 else (0.68 if calibrated_gain < 10 else 0.82)
+        )
+        ax.annotate(
+            f"{calibrated_gain:+.1f}%",
+            xy=(calibrated_a, calibrated_gain),
+            xytext=(0.70, label_height),
+            textcoords="axes fraction",
+            ha="center",
+            fontsize=13,
+            color=colors[2],
+            fontweight="semibold",
+            bbox={"facecolor": "white", "edgecolor": "none", "pad": 1.5},
+            arrowprops={"arrowstyle": "->", "color": colors[2], "lw": 1},
+        )
         ax.axhline(0, color="#555555", linewidth=0.8)
         ax.axvline(
             calibrated_a,
             color="#555555",
             linestyle="--",
             linewidth=1.3,
-            label=rf"Calibration $a={calibrated_a:.3f}$",
+            label=rf"Calibration $\delta={calibrated_a:.3f}$",
         )
         ax.set(
             title=f"True uncertainty CV: {100*part.realized_cv.iloc[0]:.0f}%",
-            xlabel=r"Error log SD $a$",
+            xlabel=r"Error log SD $\delta$",
             xticks=[0, 0.5, 1],
         )
         ax.title.set_fontsize(13)
